@@ -17,8 +17,8 @@
     function readColors() {
         Object.assign(COLORS, {
             accent: cssVar('--accent'), ok: cssVar('--ok'), warn: cssVar('--warn'), crit: cssVar('--crit'), idle: cssVar('--idle'),
-            text: cssVar('--text'), text2: cssVar('--text-2'), text3: cssVar('--text-3'), line: cssVar('--line'), bg2: cssVar('--bg-2'),
-            inactive: '#22334b', bodySolid: '#1d3352', bone: '#d6e6f3'
+            text: cssVar('--text'), text2: cssVar('--text-2'), text3: cssVar('--text-3'), line: cssVar('--line'),
+            ring: '#cdd6e4', accentGlow: cssVar('--accent'), grid: '#e7ebf2'
         });
     }
 
@@ -67,7 +67,7 @@
     const state = {
         profile: mergeProfile(DEFAULT_PROFILE, store.get(PROFILE_KEY) || {}),
         hasProfile: Boolean(store.get(PROFILE_KEY)),
-        env: '0g_station', filter: 'ALL', selected: 'onsd', range: '14', view: 'organs', tab: 'today',
+        env: '0g_station', filter: 'ALL', selected: 'onsd', range: '14', view: 'organs', tab: 'overview',
         exertion: { aredKg: 0, treadmillKm: 0, evaHours: 0, evaKcalOverride: null },
         freeze: false,
         streak: { count: 0, last: null, days: [] },
@@ -187,6 +187,7 @@
         if (state.filter !== 'ALL' && !regionsForProfile().some(r => r.id === state.filter)) state.filter = 'ALL';
         renderHeader(ids);
         renderRegions(ids);
+        renderSide(ids);
         renderList(ids);
         renderInspector();
         renderToday();
@@ -208,7 +209,17 @@
             pill.className = 'pill is-live';
         }
         $('env-selector').value = state.env;
+        const p = state.profile;
+        $('header-profile-name').textContent = p.name;
+        $('header-profile-meta').textContent = `${p.astronautId} · ${p.role}`;
+        $('profile-initials').textContent = initials(p.name);
+    }
+    function initials(name) {
+        const words = String(name).split(/\s+/).filter(w => w && !w.endsWith('.'));
+        return (words.slice(0, 2).map(w => w[0]).join('') || 'A').toUpperCase();
+    }
 
+    function readiness(ids = activeIds()) {
         let score = 100, worst = 'GREEN', logged = 0, stale = 0;
         ids.forEach(id => {
             const r = evalOf(id);
@@ -218,34 +229,54 @@
             if (r.tier === 'RED') { score -= 22; worst = 'RED'; }
             else if (r.tier === 'YELLOW') { score -= r.priority ? 12 : 8; if (worst !== 'RED') worst = 'YELLOW'; }
         });
-        score = Math.max(0, Math.min(100, score));
-        $('readiness-score').textContent = score;
-        $('readiness-badge').innerHTML = logged || stale ? tierBadge(worst) : badgeHTML({ state: 'empty' });
+        return { score: Math.max(0, Math.min(100, score)), worst, any: logged + stale > 0 };
+    }
 
+    /* ------------------------------------------------- hero card + vitals */
+    function renderSide(ids) {
         const p = state.profile;
-        $('header-profile-name').textContent = p.name;
-        $('header-profile-meta').textContent = `${p.astronautId} · ${p.age}y · ${p.role}`;
-        const words = p.name.split(/\s+/).filter(w => w && !w.endsWith('.'));
-        $('profile-initials').textContent = (words.slice(0, 2).map(w => w[0]).join('') || 'A').toUpperCase();
+        const mode = { FEMALE_CYCLE: 'Natural cycle', FEMALE_SUPPRESSED: 'Cycle suppression', MALE: 'Male' }[p.sexMode];
+        $('profile-hero').innerHTML = `<button class="hero-edit" type="button" data-edit-profile>Edit</button>
+            <div class="hero-top"><div class="hero-avatar">${esc(initials(p.name))}</div>
+            <div><div class="hero-name">${esc(p.name)}</div><div class="hero-role">${esc(p.astronautId)} · ${esc(p.role)}</div></div></div>
+            <div class="hero-tags"><span>${p.age} yrs</span><span>${p.weightKg} kg</span><span>${p.heightCm} cm</span><span>${esc(mode)}</span><span>${esc(env().short)}</span></div>`;
+
+        const vital = (id, icon, label) => {
+            const m = METRICS[id], r = evalOf(id);
+            const val = r.state === 'ok' ? formatValue(r.value, m) : '--';
+            const foot = r.state === 'ok' ? `${ICONS[r.tier]}${TIER_LABEL[r.tier]}` : (r.state === 'stale' ? `${ICONS.stale}Data stale` : `${ICONS.empty}No reading yet`);
+            return `<button type="button" class="vital" data-select="${id}"><span class="vital-top"><span class="vital-icon"><svg width="16" height="16"><use href="#${icon}"/></svg></span>${label}</span>
+                <span class="vital-val">${val}<small>${esc(m.unit)}</small></span><span class="vital-foot">${foot}</span></button>`;
+        };
+        const rd = readiness(ids);
+        $('vitals').innerHTML = vital('heart_rate', 'i-heart', 'Heart rate') + vital('spo2', 'i-o2', 'Blood oxygen') + vital('sleep', 'i-moon', 'Sleep') +
+            `<div class="vital" title="Starts at 100 and drops for every reading in Drift or Critical."><span class="vital-top"><span class="vital-icon"><svg width="16" height="16"><use href="#i-gauge"/></svg></span>Flight readiness</span>
+             <span class="vital-val">${rd.score}<small>/100</small></span><span class="vital-foot">${rd.any ? `${ICONS[rd.worst]}${TIER_LABEL[rd.worst]} overall` : `${ICONS.empty}No readings yet`}</span></div>`;
     }
 
     /* ---------------------------------------------------- regions + 3D body */
     let viewer = null;
     function renderRegions(ids) {
-        const statuses = {};
+        const statuses = {}, labels = {};
         const html = regionsForProfile().map(r => {
             const s = regionStatus(r.id, ids);
             statuses[r.id] = s.status;
-            const text = { GREEN: 'Normal', YELLOW: `Drift · ${s.yellow}`, RED: `Critical · ${s.red}`, idle: 'No data yet', inactive: 'Not tracked here' }[s.status];
+            const text = { GREEN: 'Normal', YELLOW: `Drift · ${s.yellow}`, RED: `Critical · ${s.red}`, idle: 'No data', inactive: 'Not tracked' }[s.status];
+            labels[r.id] = text;
             const icon = ICONS[s.status] || ICONS.idle;
-            return `<button type="button" class="region-chip" data-region="${r.id}" aria-pressed="${state.filter === r.id}">${icon}<span class="region-chip-text"><b>${esc(r.label)}</b><span>${text}</span></span></button>`;
+            return `<button type="button" class="region-item" data-region="${r.id}" aria-pressed="${state.filter === r.id}">${icon}<b>${esc(r.label)}</b><span class="rs t-${s.status}">${text}</span></button>`;
         }).join('');
-        $('region-chips').innerHTML = html;
+        $('region-list').innerHTML = html;
+        $('btn-all-systems').hidden = state.filter === 'ALL';
         if (viewer) {
             viewer.setRegionEnabled('GYN/CYCLE', state.profile.sexMode !== 'MALE');
-            viewer.setStatuses(statuses);
-            viewer.setActive(state.filter === 'ALL' ? null : state.filter);
+            viewer.setStatuses(statuses, labels);
+            syncLayers(viewer.setActive(state.filter === 'ALL' ? null : state.filter));
         }
+    }
+    function syncLayers(layers) {
+        if (!layers) return;
+        document.querySelectorAll('[data-layer]').forEach(i => { i.checked = !!layers[i.dataset.layer]; });
     }
 
     function setFilter(regionId) {
@@ -262,7 +293,7 @@
     function renderList(ids) {
         const regions = regionsForProfile().filter(r => state.filter === 'ALL' || r.id === state.filter);
         $('list-title').textContent = state.filter === 'ALL' ? 'All readings' : REGION_BY_ID[state.filter].label;
-        $('btn-all-systems').hidden = state.filter === 'ALL';
+        $('list-count').textContent = `${ids.filter(id => state.filter === 'ALL' || METRICS[id].cat === state.filter).length} tracked here`;
         let html = '';
         regions.forEach(r => {
             const mine = ids.filter(id => METRICS[id].cat === r.id);
@@ -354,16 +385,16 @@
             const bottom = opts.min === null ? a.bottom : Math.min(a.bottom, scales.y.getPixelForValue(opts.min));
             if (bottom <= top) return;
             g.save();
-            g.fillStyle = 'rgba(52, 211, 153, 0.10)';
+            g.fillStyle = 'rgba(18, 183, 106, 0.09)';
             g.fillRect(a.left, top, a.right - a.left, bottom - top);
-            g.strokeStyle = 'rgba(52, 211, 153, 0.45)'; g.lineWidth = 1; g.setLineDash([4, 4]);
+            g.strokeStyle = 'rgba(18, 183, 106, 0.55)'; g.lineWidth = 1; g.setLineDash([4, 4]);
             g.beginPath();
             if (opts.max !== null) { g.moveTo(a.left, top); g.lineTo(a.right, top); }
             if (opts.min !== null) { g.moveTo(a.left, bottom); g.lineTo(a.right, bottom); }
             g.stroke();
             if (opts.forecastFrom !== null) {
                 const x = scales.x.getPixelForValue(opts.forecastFrom);
-                g.fillStyle = opts.breach ? 'rgba(251, 191, 36, 0.07)' : 'rgba(169, 184, 204, 0.04)';
+                g.fillStyle = opts.breach ? 'rgba(247, 144, 9, 0.07)' : 'rgba(16, 24, 40, 0.025)';
                 g.fillRect(x, a.top, a.right - x, a.bottom - a.top);
             }
             g.restore();
@@ -403,8 +434,8 @@
             data: {
                 labels: [...labels, ...fcLabels],
                 datasets: [
-                    { label: m.name, data, borderColor: COLORS.accent, backgroundColor: 'rgba(56,189,248,0.08)', fill: true, borderWidth: 2, tension: 0.2,
-                      pointRadius: rows.length > 40 ? 0 : 2.5, pointHoverRadius: 4, pointBackgroundColor: COLORS.bg2, pointBorderColor: COLORS.accent, spanGaps: false },
+                    { label: m.name, data, borderColor: COLORS.accent, backgroundColor: 'rgba(50,83,223,0.08)', fill: true, borderWidth: 2.5, tension: 0.3,
+                      pointRadius: rows.length > 40 ? 0 : 2.5, pointHoverRadius: 4, pointBackgroundColor: '#ffffff', pointBorderColor: COLORS.accent, spanGaps: false },
                     ...(showFc ? [{ label: '7-day forecast', data: proj, borderColor: breach ? COLORS.warn : COLORS.text2, borderDash: [6, 4], borderWidth: 2,
                         pointRadius: 2, pointBackgroundColor: breach ? COLORS.warn : COLORS.text2, fill: false, tension: 0 }] : [])
                 ]
@@ -416,14 +447,14 @@
                     legend: { display: false },
                     corridor: { min: zone.min, max: zone.max, forecastFrom: showFc ? values.length - 1 : null, breach },
                     tooltip: {
-                        backgroundColor: '#192b47', borderColor: 'rgba(56,189,248,0.42)', borderWidth: 1, titleColor: COLORS.text, bodyColor: COLORS.text2,
+                        backgroundColor: '#ffffff', borderColor: COLORS.line, borderWidth: 1, titleColor: COLORS.text, bodyColor: COLORS.text2, padding: 10, cornerRadius: 10,
                         filter: (item) => item.raw !== null && item.raw !== undefined,
                         callbacks: { label: (c) => `${c.dataset.label}: ${formatNumber(c.raw, m.decimals)} ${m.unit}` }
                     }
                 },
                 scales: {
-                    x: { grid: { color: 'rgba(28,44,68,0.7)' }, ticks: { color: COLORS.text3, maxTicksLimit: window.innerWidth < 600 ? 5 : 9, font: { family: 'ui-monospace, monospace', size: 11 } } },
-                    y: { min: lo, max: hi, grid: { color: 'rgba(28,44,68,0.7)' }, ticks: { color: COLORS.text3, maxTicksLimit: 6, font: { family: 'ui-monospace, monospace', size: 11 },
+                    x: { grid: { color: COLORS.grid }, ticks: { color: COLORS.text3, maxTicksLimit: window.innerWidth < 600 ? 5 : 9, font: { family: cssVar('--font'), size: 11, weight: '600' } } },
+                    y: { min: lo, max: hi, grid: { color: COLORS.grid }, ticks: { color: COLORS.text3, maxTicksLimit: 6, font: { family: cssVar('--font'), size: 11, weight: '600' },
                         callback: (v) => formatNumber(v, Math.min(m.decimals, 3)) } }
                 }
             },
@@ -587,6 +618,8 @@
         completeDayIfDone(list);
         const done = list.filter(t => t.done).length;
         $('checkin-count').textContent = `${done} / ${list.length}`;
+        const left = list.length - done;
+        ['nav-badge-today', 'bell-badge'].forEach(id => { $(id).hidden = !left; $(id).textContent = left; });
         $('checkin-progress').style.width = `${(done / list.length) * 100}%`;
         $('tasks').innerHTML = list.map(t => `<li class="task${t.done ? ' is-done' : ''}">
             <span class="task-mark" aria-hidden="true">${t.done ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>' : ''}</span>
@@ -965,7 +998,7 @@
             fatigue_testing: { pvt_lapse_rate_percent: latest('pvt'), mean_reaction_time_ms: pvt.lastMeanMs ?? null, karolinska_kss_score: latest('kss') },
             sleep_architecture: { total_sleep_hours: latest('sleep'), sleep_efficiency_percent: latest('sleep_eff'), deep_sws_percent: latest('deep_sleep'), rem_percent: latest('rem_sleep'), waso_minutes: latest('waso') },
             journal_reflection: lastJournal ? { entry_type: 'TEXT', privacy_mode: lastJournal.privacy === 'share' ? 'CLINICAL_SYNC' : 'CONFIDENTIAL_PERSONAL', nlp_sentiment_score: lastJournal.score } : null,
-            status_calculated: { tier, readiness_score: parseInt($('readiness-score').textContent, 10), status_label: { GREEN: 'NOMINAL_STABLE', YELLOW: 'CAUTION_DRIFT', RED: 'CRITICAL_ALERT' }[tier], eva_cleared: tier !== 'RED' }
+            status_calculated: { tier, readiness_score: readiness().score, status_label: { GREEN: 'NOMINAL_STABLE', YELLOW: 'CAUTION_DRIFT', RED: 'CRITICAL_ALERT' }[tier], eva_cleared: tier !== 'RED' }
         };
     }
 
@@ -973,7 +1006,7 @@
         invalidate();
         const ids = activeIds(), tier = overallTier();
         const phase = { '0.38g': 'MARS_SURFACE_038G', '0g_transit': 'DEEP_SPACE_TRANSIT' }[state.env] || ENV_CODES[state.env];
-        const coords = window.BODY_ANCHORS || {};
+        const coords = viewer ? viewer.meshCoordinates() : {};
         const nodes = regionsForProfile().map(r => {
             const params = ids.filter(id => METRICS[id].cat === r.id).map(id => {
                 const m = METRICS[id], res = evalOf(id), z = safeZone(m, ctx());
@@ -984,7 +1017,7 @@
             const a = coords[r.id];
             return {
                 node_id: r.key.toUpperCase(), anatomical_region: r.organ,
-                mesh_coordinates: a ? { x: a.pos[0], y: a.pos[1], z: a.pos[2] } : { x: 0, y: 0, z: 0 },
+                mesh_coordinates: a || { x: 0, y: 0, z: 0 },
                 triage_level_1_to_7: worst, triage_color_badge: tierOfLevel(worst), deviation_direction: worst < 4 ? 'LOW' : (worst > 4 ? 'HIGH' : 'NOMINAL'),
                 linked_parameters: params
             };
@@ -1133,12 +1166,16 @@
     }
 
     /* ============================================================ EVENTS */
-    function switchTab(name) {
+    const PAGE_TITLES = { overview: 'Crew overview', today: "Today's check-ins", food: 'Food & targets', mission: 'Mission & data' };
+    function switchPage(name) {
+        if (!PAGE_TITLES[name]) name = 'overview';
+        const changed = state.tab !== name;
         state.tab = name;
-        ['today', 'food', 'mission'].forEach(n => {
-            $(`tab-${n}`).setAttribute('aria-selected', String(n === name));
-            $(`panel-${n}`).classList.toggle('is-active', n === name);
-        });
+        document.querySelectorAll('.nav-btn[data-page]').forEach(b => { if (b.dataset.page === name) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
+        document.querySelectorAll('.page').forEach(p => p.classList.toggle('is-active', p.id === `page-${name}`));
+        $('page-title').textContent = PAGE_TITLES[name];
+        if (changed) window.scrollTo({ top: 0 });
+        if (name === 'overview' && chart) chart.resize();
         saveState();
     }
     const scrollToEl = (id) => $(id).scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1153,13 +1190,14 @@
 
         // delegated clicks
         document.addEventListener('click', (e) => {
-            const el = e.target.closest('[data-select],[data-region],[data-step],[data-task],[data-remove-food],[data-quick],[data-demo-log],.term');
+            const el = e.target.closest('[data-select],[data-region],[data-step],[data-task],[data-remove-food],[data-quick],[data-demo-log],[data-edit-profile],.term');
             if (!el) { hideTerm(e); return; }
             if (el.classList.contains('term')) { showTerm(el); return; }
             hideTerm(e);
             if (el.hasAttribute('data-demo-log')) loadMissionLog();
-            else if (el.dataset.select) selectMetric(el.dataset.select, { scroll: true });
-            else if (el.dataset.region && el.classList.contains('region-chip')) setFilter(el.dataset.region);
+            else if (el.hasAttribute('data-edit-profile')) openProfile();
+            else if (el.dataset.select) { if (state.tab !== 'overview') switchPage('overview'); selectMetric(el.dataset.select, { scroll: true }); }
+            else if (el.dataset.region && el.classList.contains('region-item')) setFilter(el.dataset.region);
             else if (el.dataset.step) {
                 const id = el.dataset.id;
                 if (el.dataset.step === 'arm') state.armed[id] = true;
@@ -1168,10 +1206,10 @@
                 render();
             } else if (el.dataset.task) {
                 const id = el.dataset.task;
-                if (id === 'food') switchTab('food');
-                else if (id === 'mind') scrollToEl('mind-card');
+                if (id === 'food') switchPage('food');
+                else if (id === 'mind') { switchPage('today'); scrollToEl('mind-card'); }
                 else if (id === 'pvt') openPvt();
-                else if (id === 'cycle') scrollToEl('cycle-card');
+                else if (id === 'cycle') { switchPage('today'); scrollToEl('cycle-card'); }
                 else if (id === 'vitamins') {
                     const wasDone = state.manual.date === dayKey() && state.manual.vitamins;
                     state.manual = { date: dayKey(), vitamins: !wasDone };
@@ -1189,11 +1227,8 @@
         });
 
         // body viewer controls
-        document.querySelectorAll('[data-view]').forEach(btn => btn.addEventListener('click', () => {
-            state.view = btn.dataset.view;
-            document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
-            if (viewer) viewer.setView(state.view);
-            saveState();
+        document.querySelectorAll('[data-layer]').forEach(inp => inp.addEventListener('change', () => {
+            if (viewer) syncLayers(viewer.setLayer(inp.dataset.layer, inp.checked));
         }));
         document.querySelectorAll('[data-preset]').forEach(btn => btn.addEventListener('click', () => viewer && viewer.preset(btn.dataset.preset)));
         document.querySelectorAll('[data-zoom]').forEach(btn => btn.addEventListener('click', () => viewer && viewer.zoom(parseInt(btn.dataset.zoom, 10))));
@@ -1211,15 +1246,8 @@
         });
 
         // tabs
-        ['today', 'food', 'mission'].forEach(n => $(`tab-${n}`).addEventListener('click', () => switchTab(n)));
-        document.querySelector('.tabs').addEventListener('keydown', (e) => {
-            const order = ['today', 'food', 'mission'];
-            const i = order.indexOf(state.tab);
-            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
-                const next = order[(i + (e.key === 'ArrowRight' ? 1 : 2)) % 3];
-                switchTab(next); $(`tab-${next}`).focus();
-            }
-        });
+        document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.addEventListener('click', () => switchPage(b.dataset.page)));
+        $('btn-reminders').addEventListener('click', () => switchPage('today'));
 
         // today
         $('freeze-toggle').addEventListener('change', (e) => { state.freeze = e.target.checked; render(); });
@@ -1394,21 +1422,20 @@
         buildTermIndex();
         loadState();
         wire();
-        switchTab(state.tab);
-        document.querySelectorAll('[data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view === state.view)));
+        switchPage(state.tab);
 
+        const fallback = () => {
+            $('body-fallback').hidden = false;
+            $('stage-loading').hidden = true;
+            document.querySelectorAll('.stage-tools, .stage-foot').forEach(el => { el.hidden = true; });
+        };
         viewer = window.createBodyViewer ? window.createBodyViewer({
             canvas: $('body-canvas'), stage: $('body-stage'), hotspotLayer: $('body-hotspots'),
-            regions: REGIONS, colors: COLORS, onSelect: setFilter
+            regions: REGIONS, colors: COLORS, onSelect: setFilter,
+            onLoad: (ok) => { if (!ok) fallback(); else render(); }
         }) : null;
-        if (!viewer) {
-            $('body-fallback').hidden = false;
-            $('body-canvas').hidden = true;
-            document.querySelectorAll('.stage-tools, .stage-presets, .stage-hint').forEach(el => { el.hidden = true; });
-            $('body-stage').style.height = '120px';
-        } else {
-            viewer.setView(state.view);
-        }
+        if (!viewer) { fallback(); $('body-canvas').hidden = true; }
+        else viewer.load(window.ARTEMIS_BODY_GLB);
 
         render();
         if (!state.hasProfile) openProfile();

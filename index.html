@@ -3,13 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#070d17">
-    <meta name="description" content="A.R.T.E.M.I.S. — daily astronaut health, diet and mental-health monitor that adapts to the ISS, the Moon and Mars.">
+    <meta name="theme-color" content="#eef1f6">
+    <meta name="description" content="A.R.T.E.M.I.S. — daily astronaut health, diet and mind monitor that adapts to the ISS, the Moon and Mars.">
     <title>A.R.T.E.M.I.S. · Crew Health Monitor</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23070d17' stroke='%2338bdf8' stroke-width='2'/%3E%3Cpath d='M9 22 L16 8 L23 22 M12 17 H20' fill='none' stroke='%2338bdf8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="icon" type="image/png" href="assets/favicon.png">
+    <link rel="apple-touch-icon" href="assets/mark.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/app.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js" defer></script>
+    <script src="models/body.glb.js" defer></script>
     <script src="js/metrics.js" defer></script>
     <script src="js/content.js" defer></script>
     <script src="js/engine.js" defer></script>
@@ -17,340 +24,344 @@
     <script src="js/app.js" defer></script>
 </head>
 <body>
-<a class="skip-link" href="#inspector">Skip to the selected reading</a>
+<a class="skip-link" href="#main">Skip to content</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-star" viewBox="0 0 32 32"><path fill="currentColor" d="M16 1l2.2 10.6L27 6l-5.4 8.6L31 16l-9.4 1.4L27 26l-8.8-5.6L16 31l-2.2-10.6L5 26l5.4-8.6L1 16l9.4-1.4L5 6l8.8 5.6z"/></symbol>
+    <symbol id="i-body" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2.2"/><path d="M5 8.5l7 1.2 7-1.2M12 9.7V15m0 0l-3 6.5M12 15l3 6.5"/></g></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3.5" width="16" height="17" rx="3"/><path d="M8.5 12l2.4 2.4L15.5 9.8"/></g></symbol>
+    <symbol id="i-food" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a2 2 0 0 0 4 0V3M8 10v11M17 21V3c-2.2 1.2-3 3.8-3 7h3"/></g></symbol>
+    <symbol id="i-rocket" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4c3-1 5.5-.5 6 0 .5.5 1 3 0 6l-6 6-6-6z"/><circle cx="15" cy="9" r="1.5"/><path d="M8 10l-3.5.5L3 13l4 1M14 16l-.5 3.5L11 21l-1-4M6 18c-1 1-1.5 2.5-1.5 2.5S6 20 7 19"/></g></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5M9 8h6"/></g></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></g></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/><path fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" d="M7 12h2.5l1.2-2 1.8 4 1.2-2H17"/></symbol>
+    <symbol id="i-o2" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-5"/></g></symbol>
+</svg>
 
-<!-- ============================================================== HEADER -->
-<header class="topbar">
-    <div class="brand">
-        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#38bdf8" stroke-width="1.6"/><path d="M9 22 L16 8 L23 22 M12 17 H20" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <div>
-            <div class="brand-name">A.R.T.E.M.I.S.</div>
-            <div class="brand-sub">Crew health, diet &amp; mind — adapted to where you are</div>
-        </div>
+<!-- ================================================================ SIDEBAR -->
+<nav class="sidebar" aria-label="Main">
+    <div class="side-mark"><img src="assets/mark.png" alt="ARTEMIS" width="44" height="44"></div>
+    <div class="side-nav">
+        <button type="button" class="nav-btn" data-page="overview" aria-current="page"><svg width="22" height="22"><use href="#i-body"/></svg><span>Body</span></button>
+        <button type="button" class="nav-btn" data-page="today"><svg width="22" height="22"><use href="#i-check"/></svg><span>Today</span><i class="nav-badge" id="nav-badge-today" hidden></i></button>
+        <button type="button" class="nav-btn" data-page="food"><svg width="22" height="22"><use href="#i-food"/></svg><span>Food</span></button>
+        <button type="button" class="nav-btn" data-page="mission"><svg width="22" height="22"><use href="#i-rocket"/></svg><span>Mission</span></button>
     </div>
-    <div class="topbar-right">
-        <label class="env-field">
-            <span>Location</span>
-            <select id="env-selector">
-                <option value="0g_station">ISS microgravity (0g)</option>
-                <option value="0g_transit">Deep-space transit (0g)</option>
-                <option value="0.166g">Moon base habitat (0.166g)</option>
-                <option value="0.166g_rover">Moon rover / EVA (0.166g)</option>
-                <option value="0.38g">Mars habitat (0.38g)</option>
-            </select>
-        </label>
-        <span id="comms-status" class="pill is-live"><span class="dot"></span><span id="comms-text">Live Earth link</span></span>
-        <div class="readiness" title="Flight readiness: starts at 100 and drops for every reading in Drift or Critical.">
-            <div class="readiness-label">Flight<br>readiness</div>
-            <div class="readiness-score"><span id="readiness-score">100</span><small>/100</small></div>
-            <span id="readiness-badge"></span>
+    <button type="button" class="nav-btn nav-extra" id="btn-glossary" title="Glossary"><svg width="22" height="22"><use href="#i-book"/></svg><span>Glossary</span></button>
+</nav>
+
+<div class="app">
+    <!-- ============================================================ TOPBAR -->
+    <header class="topbar">
+        <div class="topbar-left">
+            <img class="logo" src="assets/logo.png" alt="ARTEMIS" width="720" height="273">
+            <span class="topbar-sep" aria-hidden="true"></span>
+            <h1 class="page-title" id="page-title">Crew overview</h1>
         </div>
-        <button id="btn-glossary" class="icon-btn" type="button" title="Glossary of terms" aria-label="Open glossary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 8h6"/></svg>
-        </button>
-        <button id="btn-edit-profile" class="profile-chip" type="button" aria-label="Edit crew profile">
-            <span class="avatar" id="profile-initials">EV</span>
-            <span class="profile-chip-text"><b id="header-profile-name">Crew member</b><span id="header-profile-meta">ASTRO-084</span></span>
-        </button>
-    </div>
-</header>
-
-<main class="layout">
-    <!-- ========================================================== BODY + LIST -->
-    <section class="col col-body" aria-label="Body map and readings">
-        <div class="card body-card">
-            <div class="card-head">
-                <h2>Body map</h2>
-                <div class="seg" role="group" aria-label="Body view">
-                    <button type="button" data-view="organs" aria-pressed="true">Organs</button>
-                    <button type="button" data-view="surface" aria-pressed="false">Surface</button>
-                    <button type="button" data-view="skeleton" aria-pressed="false">Skeleton</button>
-                </div>
-            </div>
-            <div class="body-stage" id="body-stage">
-                <canvas id="body-canvas" tabindex="0" aria-label="3D body. Drag or use arrow keys to rotate."></canvas>
-                <div class="hotspots" id="body-hotspots"></div>
-                <div class="stage-tools">
-                    <button class="icon-btn" type="button" data-zoom="1" aria-label="Zoom in" title="Zoom in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
-                    <button class="icon-btn" type="button" data-zoom="-1" aria-label="Zoom out" title="Zoom out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
-                    <button class="icon-btn" type="button" id="btn-view-reset" aria-label="Reset view" title="Reset view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
-                </div>
-                <div class="stage-presets seg" role="group" aria-label="Camera angle">
-                    <button type="button" data-preset="front">Front</button>
-                    <button type="button" data-preset="side">Side</button>
-                    <button type="button" data-preset="back">Back</button>
-                </div>
-                <p class="stage-hint">Drag to rotate</p>
-                <div class="body-fallback" id="body-fallback" hidden>3D view needs WebGL. Use the body areas below.</div>
-            </div>
-            <div class="region-grid" id="region-chips"></div>
+        <div class="topbar-right">
+            <label class="select-pill">
+                <span class="sr-only">Location</span>
+                <svg width="16" height="16" aria-hidden="true"><use href="#i-rocket"/></svg>
+                <select id="env-selector">
+                    <option value="0g_station">ISS · microgravity</option>
+                    <option value="0g_transit">Deep-space transit</option>
+                    <option value="0.166g">Moon base habitat</option>
+                    <option value="0.166g_rover">Moon rover / EVA</option>
+                    <option value="0.38g">Mars habitat</option>
+                </select>
+            </label>
+            <span id="comms-status" class="pill is-live"><span class="dot"></span><span id="comms-text">Live Earth link</span></span>
+            <button type="button" class="round-btn" id="btn-reminders" aria-label="Today's check-ins"><svg width="20" height="20"><use href="#i-bell"/></svg><i class="round-badge" id="bell-badge" hidden></i></button>
+            <button id="btn-edit-profile" class="profile-chip" type="button" aria-label="Edit crew profile">
+                <span class="avatar" id="profile-initials">EV</span>
+                <span class="profile-chip-text"><b id="header-profile-name">Crew member</b><span id="header-profile-meta">ASTRO-084</span></span>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
         </div>
+    </header>
 
-        <div class="card list-card">
-            <div class="card-head">
-                <h2 id="list-title">All readings</h2>
-                <button id="btn-all-systems" class="btn btn-ghost btn-sm" type="button" hidden>Show all</button>
-            </div>
-            <div id="metric-list" class="metric-list"></div>
-        </div>
-    </section>
-
-    <!-- ============================================================ INSPECTOR -->
-    <section class="col col-main" id="inspector" aria-label="Selected reading" tabindex="-1">
-        <article class="card">
-            <div class="inspector-head">
-                <div>
-                    <div class="eyebrow" id="inspect-eyebrow"></div>
-                    <h1 class="inspector-title" id="inspect-title">Select a reading</h1>
-                    <div id="inspect-badge"></div>
-                </div>
-                <div class="readout">
-                    <div class="readout-value" id="inspect-readout">--</div>
-                    <div class="readout-sub" id="inspect-readout-sub"></div>
-                </div>
-            </div>
-
-            <div class="gauge" id="inspect-gauge" aria-hidden="true"></div>
-
-            <div class="chart-toolbar">
-                <div class="legend">
-                    <span><i class="swatch-zone"></i>Safe zone</span>
-                    <span><i class="swatch-line"></i>Your readings</span>
-                    <span><i class="swatch-fc"></i>7-day forecast</span>
-                </div>
-                <div class="seg" role="group" aria-label="Timeline length" id="range-seg">
-                    <button type="button" data-range="14">14D</button>
-                    <button type="button" data-range="30">30D</button>
-                    <button type="button" data-range="90">90D</button>
-                    <button type="button" data-range="all">Mission</button>
-                </div>
-            </div>
-            <div class="chart-box">
-                <canvas id="trend-chart" aria-label="Trend chart"></canvas>
-                <div class="chart-empty" id="chart-empty" hidden></div>
-            </div>
-            <div class="chart-meta"><span id="inspect-zone"></span><span id="inspect-source"></span></div>
-            <div id="early-warning" style="margin-top:12px"></div>
-
-            <form class="log-form" id="log-form" autocomplete="off">
-                <label for="log-value" id="log-label">Log today's reading</label>
-                <div class="input-unit"><input id="log-value" type="number" step="any" inputmode="decimal" placeholder="Enter value"><span id="log-unit"></span></div>
-                <button class="btn btn-primary" type="submit">Log reading</button>
-            </form>
-        </article>
-
-        <article class="card">
-            <div class="card-head"><h2>What to do now</h2><span class="hint" id="actions-hint"></span></div>
-            <div class="action-list" id="actions"></div>
-        </article>
-
-        <article class="card">
-            <div class="card-head"><h2>Understand this reading</h2></div>
-            <div class="explain">
-                <div><div class="section-label">What today's result means</div><p id="explain-today">--</p></div>
-                <div><div class="section-label">Why this test matters</div><p id="explain-why">--</p></div>
-                <div>
-                    <div class="section-label">How to measure</div>
-                    <div class="how"><div id="explain-pic"></div><ol id="explain-how"></ol></div>
-                </div>
-            </div>
-        </article>
-    </section>
-
-    <!-- ============================================================ SIDE TABS -->
-    <aside class="col col-side" aria-label="Daily tools">
-        <div class="tabs" role="tablist" aria-label="Daily tools">
-            <button type="button" role="tab" id="tab-today" aria-controls="panel-today" aria-selected="true">Today</button>
-            <button type="button" role="tab" id="tab-food" aria-controls="panel-food" aria-selected="false">Food</button>
-            <button type="button" role="tab" id="tab-mission" aria-controls="panel-mission" aria-selected="false">Mission</button>
-        </div>
-
-        <!-- ---------------------------------------------------------- TODAY -->
-        <div class="tab-panel is-active" id="panel-today" role="tabpanel" aria-labelledby="tab-today">
-            <section class="card" aria-labelledby="checkin-title">
-                <div id="reminder-banner" class="banner is-reminder" hidden></div>
-                <div id="reward-banner" class="banner is-reward" hidden></div>
-                <div class="streak">
-                    <div class="streak-num" id="streak-count">0</div>
-                    <div class="streak-meta"><b id="checkin-title">Day streak</b><br><span id="streak-note">Finish today's check-ins to start one</span></div>
-                    <div class="week" id="streak-week" aria-label="Last 7 days"></div>
-                </div>
-                <div class="progress" aria-hidden="true"><i id="checkin-progress" style="width:0%"></i></div>
-                <div class="row-between small muted"><span>Today's check-ins</span><span class="num" id="checkin-count">0 / 0</span></div>
-                <ul class="tasks" id="tasks"></ul>
-                <hr class="divider">
-                <div class="row-between">
-                    <div><b class="small">Busy / spacewalk mode</b><div class="small muted" id="freeze-desc">Protects your streak and lowers today's workout by 15%.</div></div>
-                    <label class="switch"><input type="checkbox" id="freeze-toggle" aria-label="Busy or spacewalk mode"><span class="track"></span></label>
-                </div>
-                <div class="row-between" style="margin-top:12px">
-                    <div><b class="small">Daily reminder</b><div class="small muted">Friendly nudge if check-ins are left</div></div>
-                    <div class="row"><input type="time" id="reminder-time" value="19:00" style="width:110px" aria-label="Reminder time"><label class="switch" title="Browser notifications"><input type="checkbox" id="notify-toggle" aria-label="Browser notifications"><span class="track"></span></label></div>
-                </div>
-            </section>
-
-            <section class="card" id="mind-card" aria-labelledby="mind-title">
-                <div class="card-head"><h2 id="mind-title">Mind &amp; sleep check-in</h2><button class="btn btn-ghost btn-sm" type="button" id="btn-wearable" title="Pull last night's numbers from the sleep watch and chest strap (simulated)">Sync wearable</button></div>
-                <form id="mind-form" class="stack">
-                    <label class="field"><span>Hours slept last night</span><div class="input-unit"><input type="number" id="mind-sleep" min="0" max="16" step="0.25" value="7"><span>hours</span></div></label>
-                    <div class="field">
-                        <span>How sleepy do you feel? <span class="faint">(KSS)</span></span>
-                        <div class="range-row"><input type="range" id="mind-kss" min="1" max="9" step="1" value="3"><span class="range-value" id="mind-kss-val">3</span></div>
-                        <div class="range-ends"><span>1 very alert</span><span>9 fighting sleep</span></div>
-                    </div>
-                    <div class="field">
-                        <span>Stress level today</span>
-                        <div class="range-row"><input type="range" id="mind-stress" min="0" max="10" step="1" value="2"><span class="range-value" id="mind-stress-val">2</span></div>
-                        <div class="range-ends"><span>0 calm</span><span>10 overwhelmed</span></div>
-                    </div>
-                    <button class="btn btn-primary" type="submit">Save check-in</button>
-                </form>
-            </section>
-
-            <section class="card" id="journal-card" aria-labelledby="journal-title">
-                <div class="card-head"><h2 id="journal-title">Journal</h2><span class="hint">Scored on this device only</span></div>
-                <form id="journal-form" class="stack">
-                    <label class="sr-only" for="journal-text">Journal entry</label>
-                    <textarea id="journal-text" placeholder="How was today? What's on your mind?"></textarea>
-                    <div class="radio-seg" role="radiogroup" aria-label="Privacy">
-                        <label><input type="radio" name="journal-privacy" value="private" checked> Private (stays on device)</label>
-                        <label><input type="radio" name="journal-privacy" value="share"> Share with flight surgeon</label>
-                    </div>
-                    <button class="btn btn-secondary" type="submit">Save entry</button>
-                </form>
-                <div id="journal-support" style="margin-top:12px"></div>
-                <ul class="entries" id="journal-entries" style="margin-top:12px"></ul>
-            </section>
-
-            <section class="card" id="cycle-card" aria-labelledby="cycle-title">
-                <div class="card-head"><h2 id="cycle-title">Cycle &amp; comfort check-in</h2><span class="hint" id="cycle-mode-hint"></span></div>
-                <form id="cycle-form" class="stack">
-                    <div id="cycle-natural" class="stack">
-                        <label class="field"><span>Period flow today (pad/cup changes, 0 if none)</span><input type="number" id="cyc-flow" min="0" max="15" step="1" value="0"></label>
-                    </div>
-                    <div id="cycle-suppressed" class="stack">
-                        <div class="field"><span>Did you take today's suppression pill?</span>
-                            <div class="radio-seg"><label><input type="radio" name="cyc-pill" value="yes" checked> Yes</label><label><input type="radio" name="cyc-pill" value="no"> Missed it</label></div>
+    <main id="main">
+        <!-- ======================================================== OVERVIEW -->
+        <section class="page is-active" id="page-overview" aria-label="Body overview">
+            <div class="ov-top">
+                <div class="stage-card">
+                    <div class="stage" id="body-stage">
+                        <canvas id="body-canvas" tabindex="0" aria-label="3D anatomy. Drag or use arrow keys to rotate."></canvas>
+                        <div class="hotspots" id="body-hotspots"></div>
+                        <div class="stage-loading" id="stage-loading"><span class="spinner"></span>Loading anatomy…</div>
+                        <div class="body-fallback" id="body-fallback" hidden>The 3D body needs WebGL and an internet connection for the 3D library. Body areas still work from the list.</div>
+                        <div class="stage-tools" aria-label="View controls">
+                            <button class="tool-btn" type="button" data-zoom="1" aria-label="Zoom in" title="Zoom in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M11 8v6M8 11h6M16 16l4 4"/></svg></button>
+                            <button class="tool-btn" type="button" data-zoom="-1" aria-label="Zoom out" title="Zoom out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M8 11h6M16 16l4 4"/></svg></button>
+                            <button class="tool-btn" type="button" id="btn-view-reset" aria-label="Reset view" title="Reset view"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"/><path d="M4 4v4.5h4.5"/></svg></button>
+                            <span class="tool-sep"></span>
+                            <button class="tool-btn tool-txt" type="button" data-preset="front" title="Front view">F</button>
+                            <button class="tool-btn tool-txt" type="button" data-preset="side" title="Side view">S</button>
+                            <button class="tool-btn tool-txt" type="button" data-preset="back" title="Back view">B</button>
                         </div>
-                        <div class="field"><span>Any breakthrough bleeding today?</span>
-                            <div class="radio-seg"><label><input type="radio" name="cyc-bleed" value="none" checked> None</label><label><input type="radio" name="cyc-bleed" value="spot"> Spotting</label><label><input type="radio" name="cyc-bleed" value="heavy"> Heavy</label></div>
+                        <div class="stage-foot"><span aria-hidden="true">‹</span> Drag to rotate <span aria-hidden="true">›</span></div>
+                        <div class="stage-credit">Anatomy: BodyParts3D © DBCLS · CC BY 4.0</div>
+                    </div>
+                    <div class="stage-panels">
+                        <div class="float-card areas-card">
+                            <div class="float-head"><b>Body areas</b><button id="btn-all-systems" class="link-btn" type="button" hidden>Show all</button></div>
+                            <div class="region-list" id="region-list"></div>
+                        </div>
+                        <div class="float-card layers-card">
+                            <div class="float-head"><b>Layers</b></div>
+                            <label class="layer-row"><span><i class="swatch" style="background:#e5bfa6"></i>Skin</span><span class="switch"><input type="checkbox" data-layer="skin"><span class="track"></span></span></label>
+                            <label class="layer-row"><span><i class="swatch" style="background:#a8352d"></i>Muscles</span><span class="switch"><input type="checkbox" data-layer="muscles" checked><span class="track"></span></span></label>
+                            <label class="layer-row"><span><i class="swatch" style="background:#eee3cc"></i>Skeleton</span><span class="switch"><input type="checkbox" data-layer="skeleton" checked><span class="track"></span></span></label>
+                            <label class="layer-row"><span><i class="swatch" style="background:#a8232c"></i>Organs</span><span class="switch"><input type="checkbox" data-layer="organs"><span class="track"></span></span></label>
                         </div>
                     </div>
-                    <div class="field">
-                        <span>Cramp pain (0–10)</span>
-                        <div class="range-row"><input type="range" id="cyc-cramp" min="0" max="10" step="1" value="0"><span class="range-value" id="cyc-cramp-val">0</span></div>
-                    </div>
-                    <label class="field"><span>Pelvic comfort (optional, private)</span>
-                        <select id="cyc-comfort"><option value="">Skip</option><option value="1">1 · very tense</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · relaxed</option></select>
-                    </label>
-                    <button class="btn btn-primary" type="submit">Save cycle check-in</button>
-                </form>
-            </section>
-        </div>
-
-        <!-- ----------------------------------------------------------- FOOD -->
-        <div class="tab-panel" id="panel-food" role="tabpanel" aria-labelledby="tab-food">
-            <section class="card" aria-labelledby="activity-title">
-                <div class="card-head"><h2 id="activity-title">Today's activity</h2><span class="num small" id="t-active-badge"></span></div>
-                <div class="grid-3">
-                    <label class="field"><span>Gym lifting (kg)</span><input id="exertion-ared" type="number" min="0" max="15000" step="100" value="0"></label>
-                    <label class="field"><span>Treadmill (km)</span><input id="exertion-treadmill" type="number" min="0" max="30" step="0.5" value="0"></label>
-                    <label class="field"><span>Spacewalk (hrs)</span><input id="exertion-eva" type="number" min="0" max="12" step="0.5" value="0"></label>
                 </div>
-                <p class="small faint num" id="t-active-breakdown" style="margin-top:10px"></p>
-            </section>
 
-            <section class="card" aria-labelledby="food-title">
-                <div class="card-head"><h2 id="food-title">Food log</h2><span class="hint">Sample galley menu · approximate values</span></div>
-                <div class="stack">
-                    <label class="field"><span>Scan or pick a pouch</span><select id="food-select"></select></label>
-                    <div class="field">
-                        <span>How much did you eat?</span>
-                        <div class="range-row"><input type="range" id="food-portion" min="25" max="100" step="25" value="100"><span class="range-value" id="food-portion-val">100%</span></div>
+                <div class="ov-side">
+                    <div class="hero-card" id="profile-hero"></div>
+                    <div class="vitals" id="vitals"></div>
+                    <div class="card list-card">
+                        <div class="card-head"><h2 id="list-title">All readings</h2><span class="hint" id="list-count"></span></div>
+                        <div id="metric-list" class="metric-list"></div>
                     </div>
-                    <button class="btn btn-secondary" type="button" id="btn-food-add">Add to today</button>
-                    <div class="chips" aria-label="Quick drinks">
-                        <button class="btn btn-secondary btn-sm" type="button" data-quick="water">+ Water 250 mL</button>
-                        <button class="btn btn-secondary btn-sm" type="button" data-quick="electro">+ Electrolyte</button>
-                        <button class="btn btn-secondary btn-sm" type="button" data-quick="coffee">+ Coffee</button>
-                        <button class="btn btn-secondary btn-sm" type="button" data-quick="multi">+ Multivitamin</button>
+                </div>
+            </div>
+
+            <div class="ov-detail">
+                <article class="card inspector" id="inspector" tabindex="-1">
+                    <div class="inspector-head">
+                        <div>
+                            <div class="eyebrow" id="inspect-eyebrow"></div>
+                            <h2 class="inspector-title" id="inspect-title">Select a reading</h2>
+                            <div id="inspect-badge"></div>
+                        </div>
+                        <div class="readout">
+                            <div class="readout-value" id="inspect-readout">--</div>
+                            <div class="readout-sub" id="inspect-readout-sub"></div>
+                        </div>
                     </div>
-                    <ul class="meals" id="food-items"></ul>
+                    <div class="gauge" id="inspect-gauge" aria-hidden="true"></div>
+                    <div class="chart-toolbar">
+                        <div class="legend">
+                            <span><i class="swatch-zone"></i>Safe zone</span>
+                            <span><i class="swatch-line"></i>Your readings</span>
+                            <span><i class="swatch-fc"></i>7-day forecast</span>
+                        </div>
+                        <div class="seg" role="group" aria-label="Timeline length" id="range-seg">
+                            <button type="button" data-range="14">14D</button>
+                            <button type="button" data-range="30">30D</button>
+                            <button type="button" data-range="90">90D</button>
+                            <button type="button" data-range="all">Mission</button>
+                        </div>
+                    </div>
+                    <div class="chart-box">
+                        <canvas id="trend-chart" aria-label="Trend chart"></canvas>
+                        <div class="chart-empty" id="chart-empty" hidden></div>
+                    </div>
+                    <div class="chart-meta"><span id="inspect-zone"></span><span id="inspect-source"></span></div>
+                    <div id="early-warning" class="stack" style="margin-top:12px"></div>
+                    <form class="log-form" id="log-form" autocomplete="off">
+                        <label for="log-value" id="log-label">Log today's reading</label>
+                        <div class="input-unit"><input id="log-value" type="number" step="any" inputmode="decimal" placeholder="Enter value"><span id="log-unit"></span></div>
+                        <button class="btn btn-primary" type="submit">Log reading</button>
+                    </form>
+                </article>
+                <article class="card">
+                    <div class="card-head"><h2>What to do now</h2><span class="hint" id="actions-hint"></span></div>
+                    <div class="action-list" id="actions"></div>
+                </article>
+                <article class="card">
+                    <div class="card-head"><h2>Understand this reading</h2></div>
+                    <div class="explain">
+                        <div><div class="section-label">What today's result means</div><p id="explain-today">--</p></div>
+                        <div><div class="section-label">Why this test matters</div><p id="explain-why">--</p></div>
+                        <div><div class="section-label">How to measure</div><div class="how"><div id="explain-pic"></div><ol id="explain-how"></ol></div></div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- =========================================================== TODAY -->
+        <section class="page" id="page-today" aria-label="Today's check-ins">
+            <div class="page-grid">
+                <section class="card" aria-labelledby="checkin-title">
+                    <div id="reminder-banner" class="banner is-reminder" hidden></div>
+                    <div id="reward-banner" class="banner is-reward" hidden></div>
+                    <div class="streak">
+                        <div class="streak-num" id="streak-count">0</div>
+                        <div class="streak-meta"><b id="checkin-title">Day streak</b><span id="streak-note">Finish today's check-ins to start one</span></div>
+                        <div class="week" id="streak-week" aria-label="Last 7 days"></div>
+                    </div>
+                    <div class="progress" aria-hidden="true"><i id="checkin-progress" style="width:0%"></i></div>
+                    <div class="row-between small muted"><span>Today's check-ins</span><span class="num" id="checkin-count">0 / 0</span></div>
+                    <ul class="tasks" id="tasks"></ul>
+                    <hr class="divider">
+                    <div class="row-between">
+                        <div><b class="small">Busy / spacewalk mode</b><div class="small muted" id="freeze-desc">Protects your streak and lowers today's workout by 15%.</div></div>
+                        <label class="switch"><input type="checkbox" id="freeze-toggle" aria-label="Busy or spacewalk mode"><span class="track"></span></label>
+                    </div>
+                    <div class="row-between" style="margin-top:14px">
+                        <div><b class="small">Daily reminder</b><div class="small muted">Friendly nudge if check-ins are left</div></div>
+                        <div class="row"><input type="time" id="reminder-time" value="19:00" style="width:116px" aria-label="Reminder time"><label class="switch" title="Browser notifications"><input type="checkbox" id="notify-toggle" aria-label="Browser notifications"><span class="track"></span></label></div>
+                    </div>
+                </section>
+
+                <section class="card" id="mind-card" aria-labelledby="mind-title">
+                    <div class="card-head"><h2 id="mind-title">Mind &amp; sleep check-in</h2><button class="link-btn" type="button" id="btn-wearable" title="Pull last night's numbers from the sleep watch and chest strap (simulated)">Sync wearable</button></div>
+                    <form id="mind-form" class="stack">
+                        <label class="field"><span>Hours slept last night</span><div class="input-unit"><input type="number" id="mind-sleep" min="0" max="16" step="0.25" value="7"><span>hours</span></div></label>
+                        <div class="field"><span>How sleepy do you feel? <span class="faint">(KSS)</span></span>
+                            <div class="range-row"><input type="range" id="mind-kss" min="1" max="9" step="1" value="3"><span class="range-value" id="mind-kss-val">3</span></div>
+                            <div class="range-ends"><span>1 very alert</span><span>9 fighting sleep</span></div></div>
+                        <div class="field"><span>Stress level today</span>
+                            <div class="range-row"><input type="range" id="mind-stress" min="0" max="10" step="1" value="2"><span class="range-value" id="mind-stress-val">2</span></div>
+                            <div class="range-ends"><span>0 calm</span><span>10 overwhelmed</span></div></div>
+                        <button class="btn btn-primary" type="submit">Save check-in</button>
+                    </form>
+                </section>
+
+                <section class="card" id="journal-card" aria-labelledby="journal-title">
+                    <div class="card-head"><h2 id="journal-title">Journal</h2><span class="hint">Scored on this device only</span></div>
+                    <form id="journal-form" class="stack">
+                        <label class="sr-only" for="journal-text">Journal entry</label>
+                        <textarea id="journal-text" placeholder="How was today? What's on your mind?"></textarea>
+                        <div class="radio-seg" role="radiogroup" aria-label="Privacy">
+                            <label><input type="radio" name="journal-privacy" value="private" checked> Private (stays on device)</label>
+                            <label><input type="radio" name="journal-privacy" value="share"> Share with flight surgeon</label>
+                        </div>
+                        <button class="btn btn-secondary" type="submit">Save entry</button>
+                    </form>
+                    <div id="journal-support" style="margin-top:12px"></div>
+                    <ul class="entries" id="journal-entries" style="margin-top:12px"></ul>
+                </section>
+
+                <section class="card" id="cycle-card" aria-labelledby="cycle-title">
+                    <div class="card-head"><h2 id="cycle-title">Cycle &amp; comfort check-in</h2><span class="hint" id="cycle-mode-hint"></span></div>
+                    <form id="cycle-form" class="stack">
+                        <div id="cycle-natural" class="stack">
+                            <label class="field"><span>Period flow today (pad/cup changes, 0 if none)</span><input type="number" id="cyc-flow" min="0" max="15" step="1" value="0"></label>
+                        </div>
+                        <div id="cycle-suppressed" class="stack">
+                            <div class="field"><span>Did you take today's suppression pill?</span>
+                                <div class="radio-seg"><label><input type="radio" name="cyc-pill" value="yes" checked> Yes</label><label><input type="radio" name="cyc-pill" value="no"> Missed it</label></div></div>
+                            <div class="field"><span>Any breakthrough bleeding today?</span>
+                                <div class="radio-seg"><label><input type="radio" name="cyc-bleed" value="none" checked> None</label><label><input type="radio" name="cyc-bleed" value="spot"> Spotting</label><label><input type="radio" name="cyc-bleed" value="heavy"> Heavy</label></div></div>
+                        </div>
+                        <div class="field"><span>Cramp pain (0–10)</span>
+                            <div class="range-row"><input type="range" id="cyc-cramp" min="0" max="10" step="1" value="0"><span class="range-value" id="cyc-cramp-val">0</span></div></div>
+                        <label class="field"><span>Pelvic comfort (optional, private)</span>
+                            <select id="cyc-comfort"><option value="">Skip</option><option value="1">1 · very tense</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · relaxed</option></select></label>
+                        <button class="btn btn-primary" type="submit">Save cycle check-in</button>
+                    </form>
+                </section>
+            </div>
+        </section>
+
+        <!-- ============================================================ FOOD -->
+        <section class="page" id="page-food" aria-label="Food and targets">
+            <div class="page-grid">
+                <section class="card" aria-labelledby="food-title">
+                    <div class="card-head"><h2 id="food-title">Food log</h2><span class="hint">Sample galley menu · approximate values</span></div>
+                    <div class="stack">
+                        <label class="field"><span>Scan or pick a pouch</span><select id="food-select"></select></label>
+                        <div class="field"><span>How much did you eat?</span>
+                            <div class="range-row"><input type="range" id="food-portion" min="25" max="100" step="25" value="100"><span class="range-value" id="food-portion-val">100%</span></div></div>
+                        <button class="btn btn-secondary" type="button" id="btn-food-add">Add to today</button>
+                        <div class="chips" aria-label="Quick drinks">
+                            <button class="chip" type="button" data-quick="water">+ Water 250 mL</button>
+                            <button class="chip" type="button" data-quick="electro">+ Electrolyte</button>
+                            <button class="chip" type="button" data-quick="coffee">+ Coffee</button>
+                            <button class="chip" type="button" data-quick="multi">+ Multivitamin</button>
+                        </div>
+                        <ul class="meals" id="food-items"></ul>
+                    </div>
+                </section>
+                <section class="card" aria-labelledby="progress-title">
+                    <div class="card-head"><h2 id="progress-title">Today's progress</h2></div>
                     <div class="stack" id="food-meters"></div>
-                    <button class="btn btn-primary" type="button" id="btn-food-save">Save day's totals to health log</button>
-                    <p class="small faint" id="food-saved"></p>
-                </div>
-            </section>
+                    <button class="btn btn-primary btn-block" type="button" id="btn-food-save" style="margin-top:16px">Save day's totals to health log</button>
+                    <p class="small faint" id="food-saved" style="margin-top:8px"></p>
+                </section>
+                <section class="card" aria-labelledby="activity-title">
+                    <div class="card-head"><h2 id="activity-title">Today's activity</h2><span class="num small" id="t-active-badge"></span></div>
+                    <div class="grid-3">
+                        <label class="field"><span>Gym lifting (kg)</span><input id="exertion-ared" type="number" min="0" max="15000" step="100" value="0"></label>
+                        <label class="field"><span>Treadmill (km)</span><input id="exertion-treadmill" type="number" min="0" max="30" step="0.5" value="0"></label>
+                        <label class="field"><span>Spacewalk (hrs)</span><input id="exertion-eva" type="number" min="0" max="12" step="0.5" value="0"></label>
+                    </div>
+                    <p class="small faint" id="t-active-breakdown" style="margin-top:10px"></p>
+                </section>
+                <section class="card" aria-labelledby="targets-title">
+                    <div class="card-head"><h2 id="targets-title">Your daily targets</h2><span class="hint">From your profile</span></div>
+                    <dl class="kv" id="targets"></dl>
+                    <div id="diet-alerts" class="stack" style="margin-top:10px"></div>
+                </section>
+            </div>
+        </section>
 
-            <section class="card" aria-labelledby="targets-title">
-                <div class="card-head"><h2 id="targets-title">Your daily targets</h2><span class="hint">From your profile</span></div>
-                <dl class="kv" id="targets"></dl>
-                <div id="diet-alerts" style="margin-top:10px"></div>
-            </section>
-        </div>
-
-        <!-- -------------------------------------------------------- MISSION -->
-        <div class="tab-panel" id="panel-mission" role="tabpanel" aria-labelledby="tab-mission">
-            <section class="card context" aria-labelledby="loc-title">
-                <div class="card-head"><h2 id="loc-title">What this location means</h2></div>
-                <div class="stack">
-                    <div class="callout is-info small" id="loc-kit"></div>
-                    <dl id="loc-context"></dl>
-                    <div id="delay-control" hidden>
-                        <div class="field">
-                            <span>One-way signal delay to Earth</span>
-                            <div class="range-row"><input type="range" id="delay-range" min="1" max="35" step="1" value="18"><span class="range-value" id="delay-val">18 min</span></div>
-                            <div class="range-ends"><span>closest approach</span><span>solar conjunction</span></div>
+        <!-- ========================================================= MISSION -->
+        <section class="page" id="page-mission" aria-label="Mission and data">
+            <div class="page-grid">
+                <section class="card context" aria-labelledby="loc-title">
+                    <div class="card-head"><h2 id="loc-title">What this location means</h2></div>
+                    <div class="stack">
+                        <div class="callout is-info small" id="loc-kit"></div>
+                        <dl id="loc-context"></dl>
+                        <div id="delay-control" hidden>
+                            <div class="field"><span>One-way signal delay to Earth</span>
+                                <div class="range-row"><input type="range" id="delay-range" min="1" max="35" step="1" value="18"><span class="range-value" id="delay-val">18 min</span></div>
+                                <div class="range-ends"><span>closest approach</span><span>solar conjunction</span></div></div>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <section class="card" aria-labelledby="profile-title">
-                <div class="card-head"><h2 id="profile-title">Crew profile &amp; medical history</h2><button class="btn btn-ghost btn-sm" type="button" id="btn-edit-profile-inline">Edit</button></div>
-                <div class="stack small" id="profile-summary"></div>
-            </section>
-
-            <section class="card" aria-labelledby="demo-title">
-                <div class="card-head"><h2 id="demo-title">Demo scenarios</h2></div>
-                <div class="stack">
-                    <button class="btn btn-secondary" type="button" id="btn-load-log">Load 45-day mission log</button>
-                    <div class="grid-3">
-                        <button class="btn btn-secondary" type="button" id="btn-demo-normal">Normal</button>
-                        <button class="btn btn-secondary" type="button" id="btn-demo-drift">Drift</button>
-                        <button class="btn btn-secondary" type="button" id="btn-demo-critical">Critical</button>
+                </section>
+                <section class="card" aria-labelledby="profile-title">
+                    <div class="card-head"><h2 id="profile-title">Crew profile &amp; medical history</h2><button class="link-btn" type="button" id="btn-edit-profile-inline">Edit</button></div>
+                    <div class="stack small" id="profile-summary"></div>
+                </section>
+                <section class="card" aria-labelledby="demo-title">
+                    <div class="card-head"><h2 id="demo-title">Demo scenarios</h2></div>
+                    <div class="stack">
+                        <button class="btn btn-primary" type="button" id="btn-load-log">Load 45-day mission log</button>
+                        <div class="grid-3">
+                            <button class="btn btn-secondary" type="button" id="btn-demo-normal">Normal</button>
+                            <button class="btn btn-secondary" type="button" id="btn-demo-drift">Drift</button>
+                            <button class="btn btn-secondary" type="button" id="btn-demo-critical">Critical</button>
+                        </div>
+                        <p class="small faint">Scenarios adapt to the selected crew profile and location.</p>
                     </div>
-                    <p class="small faint">Scenarios adapt to the selected crew profile and location.</p>
-                </div>
-            </section>
+                </section>
+                <section class="card" aria-labelledby="data-title">
+                    <div class="card-head"><h2 id="data-title">Data</h2><span class="hint">Saved in this browser</span></div>
+                    <div class="stack">
+                        <button class="btn btn-secondary" type="button" id="btn-export">Download snapshot (diet-spec JSON)</button>
+                        <button class="btn btn-secondary" type="button" id="btn-export-mars">Download snapshot (Mars-spec JSON)</button>
+                        <button class="btn btn-ghost" type="button" id="btn-clear">Clear all logged data</button>
+                    </div>
+                </section>
+                <section class="card" aria-labelledby="credits-title">
+                    <div class="card-head"><h2 id="credits-title">Credits</h2></div>
+                    <p class="small muted">3D anatomy: <b>BodyParts3D, © The Database Center for Life Science</b>, licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC Attribution 4.0 International</a>. Adult male reference anatomy, simplified for the web.</p>
+                    <p class="small muted" style="margin-top:8px">Not a medical device. Ranges come from the team's research documents — see <code>docs/thresholds.md</code>.</p>
+                </section>
+            </div>
+        </section>
+    </main>
+</div>
 
-            <section class="card" aria-labelledby="data-title">
-                <div class="card-head"><h2 id="data-title">Data</h2><span class="hint">Saved in this browser</span></div>
-                <div class="stack">
-                    <button class="btn btn-secondary" type="button" id="btn-export">Download snapshot (diet-spec JSON)</button>
-                    <button class="btn btn-secondary" type="button" id="btn-export-mars">Download snapshot (Mars-spec JSON)</button>
-                    <button class="btn btn-ghost" type="button" id="btn-clear">Clear all logged data</button>
-                </div>
-            </section>
-        </div>
-    </aside>
-</main>
-
-<footer class="footer">A.R.T.E.M.I.S. · NASA Space Apps prototype · Not a medical device. Ranges come from the team's research documents (see docs/thresholds.md).</footer>
-
-<!-- ============================================================ DIALOGS -->
+<!-- ================================================================ DIALOGS -->
 <dialog id="profile-dialog" aria-labelledby="profile-dialog-title">
     <form id="profile-form" method="dialog">
         <div class="dialog-head">
             <div><h2 id="profile-dialog-title">Crew profile setup</h2><p>Sets your calorie, water, protein and iron targets, safety checks and cycle tracking.</p></div>
-            <button class="icon-btn" type="button" id="btn-close-profile" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <button class="round-btn" type="button" id="btn-close-profile" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
         </div>
         <div class="dialog-body">
             <div class="presets">
                 <span>Quick presets</span>
-                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="cycle">Female · natural cycle</button>
-                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="suppressed">Female · suppressed</button>
-                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="male">Male</button>
+                <button class="chip" type="button" data-preset-profile="cycle">Female · natural cycle</button>
+                <button class="chip" type="button" data-preset-profile="suppressed">Female · suppressed</button>
+                <button class="chip" type="button" data-preset-profile="male">Male</button>
             </div>
             <fieldset>
                 <legend>1 · About you</legend>
@@ -367,16 +378,9 @@
                             <option value="FEMALE_CYCLE">Female · natural cycle (Mode B)</option>
                             <option value="FEMALE_SUPPRESSED">Female · cycle suppression (Mode A)</option>
                             <option value="MALE">Male</option>
-                        </select>
-                    </label>
+                        </select></label>
                     <label class="field span-2"><span>Mission role</span>
-                        <select id="prof-role">
-                            <option>Mission Commander</option>
-                            <option>Flight Engineer / EVA Specialist</option>
-                            <option>Payload &amp; Medical Officer</option>
-                            <option>Science &amp; Surface Geologist</option>
-                        </select>
-                    </label>
+                        <select id="prof-role"><option>Mission Commander</option><option>Flight Engineer / EVA Specialist</option><option>Payload &amp; Medical Officer</option><option>Science &amp; Surface Geologist</option></select></label>
                     <label class="field span-2"><span>Resting HRV baseline (ms)</span><input id="prof-hrv" type="number" min="10" max="150" step="1"></label>
                 </div>
             </fieldset>
@@ -386,14 +390,11 @@
                     <label class="field" data-cycle-only><span>Cycle length (days)</span><input id="prof-cycle-length" type="number" min="21" max="45"></label>
                     <label class="field" data-cycle-only><span>Current cycle day</span><input id="prof-cycle-day" type="number" min="1" max="45"></label>
                     <label class="field span-2" data-cycle-only><span>Typical flow</span>
-                        <select id="prof-flow-baseline"><option value="Light">Light (1–2 changes/day)</option><option value="Moderate">Moderate (2–3 changes/day)</option><option value="Heavy">Heavy (4+ changes/day)</option></select>
-                    </label>
+                        <select id="prof-flow-baseline"><option value="Light">Light (1–2 changes/day)</option><option value="Moderate">Moderate (2–3 changes/day)</option><option value="Heavy">Heavy (4+ changes/day)</option></select></label>
                     <label class="field span-4" data-suppressed-only><span>Suppression regimen</span>
-                        <select id="prof-suppression-type"><option>Continuous Combined Oral Pill</option><option>Progestin-Only Suppression Pill</option><option>LNG-IUD / Subdermal Implant</option></select>
-                    </label>
+                        <select id="prof-suppression-type"><option>Continuous Combined Oral Pill</option><option>Progestin-Only Suppression Pill</option><option>LNG-IUD / Subdermal Implant</option></select></label>
                     <label class="field span-2"><span>Usual cramp pain</span>
-                        <select id="prof-cramp-baseline"><option>None / Mild (0-3 NRS)</option><option>Moderate (4-6 NRS)</option><option>Severe Dysmenorrhea (7-10 NRS)</option></select>
-                    </label>
+                        <select id="prof-cramp-baseline"><option>None / Mild (0-3 NRS)</option><option>Moderate (4-6 NRS)</option><option>Severe Dysmenorrhea (7-10 NRS)</option></select></label>
                 </div>
             </fieldset>
             <fieldset>
@@ -413,22 +414,19 @@
                 <legend>4 · Diet</legend>
                 <div class="form-grid">
                     <label class="field span-2"><span>Diet preference</span>
-                        <select id="prof-diet"><option>Standard Space Ration</option><option>Plant-Forward / Vegetarian</option><option>Dairy-Free / Lactose-Free</option><option>Low-Sodium Baseline</option></select>
-                    </label>
+                        <select id="prof-diet"><option>Standard Space Ration</option><option>Plant-Forward / Vegetarian</option><option>Dairy-Free / Lactose-Free</option><option>Low-Sodium Baseline</option></select></label>
                     <label class="field span-2"><span>Food allergies</span><input id="prof-allergies" type="text"></label>
                 </div>
             </fieldset>
         </div>
-        <div class="dialog-foot">
-            <button class="btn btn-primary" type="submit" value="save">Save profile</button>
-        </div>
+        <div class="dialog-foot"><button class="btn btn-primary" type="submit" value="save">Save profile</button></div>
     </form>
 </dialog>
 
 <dialog id="pvt-dialog" aria-labelledby="pvt-title">
     <div class="dialog-head">
         <div><h2 id="pvt-title">Reaction test (PVT)</h2><p>Tap the box (or press Space) as fast as you can each time it turns amber.</p></div>
-        <button class="icon-btn" type="button" id="btn-close-pvt" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="round-btn" type="button" id="btn-close-pvt" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="dialog-body">
         <div class="row" id="pvt-setup">
@@ -446,7 +444,7 @@
 <dialog id="glossary-dialog" aria-labelledby="glossary-title">
     <div class="dialog-head">
         <div><h2 id="glossary-title">Glossary</h2><p>Space-medicine words in everyday language.</p></div>
-        <button class="icon-btn" type="button" id="btn-close-glossary" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="round-btn" type="button" id="btn-close-glossary" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="dialog-body">
         <input type="text" id="glossary-search" placeholder="Search terms…" aria-label="Search glossary">
