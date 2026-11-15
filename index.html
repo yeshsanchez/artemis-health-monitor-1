@@ -3,1730 +3,458 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A.R.T.E.M.I.S. Crew Health &amp; Sustenance Monitor</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body {
-            background-color: #090d16;
-            color: #f8fafc;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            margin: 0;
-        }
-        .node-pulse-red { filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.85)); }
-        .node-pulse-amber { filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.8)); }
-        .node-pulse-green { filter: drop-shadow(0 0 5px rgba(16, 185, 129, 0.7)); }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: #090d16; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
-    </style>
+    <meta name="theme-color" content="#070d17">
+    <meta name="description" content="A.R.T.E.M.I.S. — daily astronaut health, diet and mental-health monitor that adapts to the ISS, the Moon and Mars.">
+    <title>A.R.T.E.M.I.S. · Crew Health Monitor</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%23070d17' stroke='%2338bdf8' stroke-width='2'/%3E%3Cpath d='M9 22 L16 8 L23 22 M12 17 H20' fill='none' stroke='%2338bdf8' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/app.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" defer></script>
+    <script src="js/metrics.js" defer></script>
+    <script src="js/content.js" defer></script>
+    <script src="js/engine.js" defer></script>
+    <script src="js/body3d.js" defer></script>
+    <script src="js/app.js" defer></script>
 </head>
-<body class="min-h-screen flex flex-col bg-[#090d16] text-slate-100 antialiased">
+<body>
+<a class="skip-link" href="#inspector">Skip to the selected reading</a>
 
-<!-- Crew Onboarding & Profile Setup Modal -->
-<div id="profile-setup-modal" class="fixed inset-0 z-50 bg-[#05080f]/85 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="setup-modal-title">
-    <div class="bg-[#0e1420] border border-slate-700 rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between gap-4 sticky top-0 bg-[#0e1420] z-10">
-            <div>
-                <h2 id="setup-modal-title" class="text-base font-bold text-slate-50">Astronaut Intake &amp; Baseline Profile Setup</h2>
-                <p class="text-xs text-slate-400 mt-0.5">Sets resting calorie goals, water/protein/iron targets, safety guards, and cycle tracking.</p>
-            </div>
-            <button id="btn-close-modal" type="button" class="text-xs font-medium px-2.5 py-1 rounded border border-slate-700 text-slate-300 hover:bg-slate-800">Close</button>
+<!-- ============================================================== HEADER -->
+<header class="topbar">
+    <div class="brand">
+        <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14" fill="none" stroke="#38bdf8" stroke-width="1.6"/><path d="M9 22 L16 8 L23 22 M12 17 H20" fill="none" stroke="#38bdf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+            <div class="brand-name">A.R.T.E.M.I.S.</div>
+            <div class="brand-sub">Crew health, diet &amp; mind — adapted to where you are</div>
         </div>
-
-        <form id="profile-setup-form" class="p-6 space-y-5">
-            <div class="bg-[#090d16] border border-slate-800 rounded p-3 flex flex-wrap items-center justify-between gap-2">
-                <span class="text-xs font-medium text-slate-400">Quick Test Presets:</span>
-                <div class="flex flex-wrap gap-2">
-                    <button id="btn-preset-female-cycle" type="button" class="text-xs font-medium px-2.5 py-1 rounded border border-slate-700 bg-[#0e1420] hover:border-sky-400 text-slate-200">Female (Natural Cycle)</button>
-                    <button id="btn-sample-profile" type="button" class="text-xs font-medium px-2.5 py-1 rounded border border-slate-700 bg-[#0e1420] hover:border-sky-400 text-slate-200">Female (ASTRO-084 Suppressed)</button>
-                    <button id="btn-preset-male" type="button" class="text-xs font-medium px-2.5 py-1 rounded border border-slate-700 bg-[#0e1420] hover:border-sky-400 text-sky-300">Male (ASTRO-019)</button>
-                </div>
-            </div>
-
-            <div>
-                <h3 class="text-xs font-semibold text-sky-300 mb-3">1. Crew Demographic Profile</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div>
-                        <label for="prof-id" class="block text-xs text-slate-400 mb-1">Astronaut ID</label>
-                        <input id="prof-id" type="text" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono text-slate-100 outline-none focus:border-sky-400" value="ASTRO-084">
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label for="prof-name" class="block text-xs text-slate-400 mb-1">Full Name / Callsign</label>
-                        <input id="prof-name" type="text" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400" value="Cmdr. Elena Vance">
-                    </div>
-                    <div>
-                        <label for="prof-age" class="block text-xs text-slate-400 mb-1">Age (years)</label>
-                        <input id="prof-age" type="number" min="21" max="75" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="34">
-                    </div>
-                    <div>
-                        <label for="prof-height" class="block text-xs text-slate-400 mb-1">Height (cm)</label>
-                        <input id="prof-height" type="number" min="140" max="220" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="168">
-                    </div>
-                    <div>
-                        <label for="prof-weight" class="block text-xs text-slate-400 mb-1">Body Mass (kg)</label>
-                        <input id="prof-weight" type="number" min="40" max="130" step="0.5" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="62">
-                    </div>
-                    <div>
-                        <label for="prof-bodyfat" class="block text-xs text-slate-400 mb-1">Body Fat (%)</label>
-                        <input id="prof-bodyfat" type="number" min="5" max="50" step="0.5" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="21.5">
-                    </div>
-                    <div>
-                        <label for="prof-bmd-tscore" class="block text-xs text-slate-400 mb-1">Baseline BMD T-Score</label>
-                        <input id="prof-bmd-tscore" type="number" min="-4" max="3" step="0.1" required class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="-0.3">
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label for="prof-sex-mode" class="block text-xs text-slate-400 mb-1">Biological Sex &amp; Cycle Mode</label>
-                        <select id="prof-sex-mode" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                            <option value="FEMALE_CYCLE">Female - Mode B (Natural Cycle)</option>
-                            <option value="FEMALE_SUPPRESSED">Female - Mode A (Suppression)</option>
-                            <option value="MALE">Male</option>
-                        </select>
-                    </div>
-                    <div class="sm:col-span-2">
-                        <label for="prof-role" class="block text-xs text-slate-400 mb-1">Mission Role</label>
-                        <select id="prof-role" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                            <option value="Mission Commander">Mission Commander</option>
-                            <option value="Flight Engineer / EVA Specialist">Flight Engineer / EVA Specialist</option>
-                            <option value="Payload & Medical Officer" selected>Payload &amp; Medical Officer</option>
-                            <option value="Science & Surface Geologist">Science &amp; Surface Geologist</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div id="prof-gyn-section" class="border-t border-slate-800 pt-4">
-                <h3 class="text-xs font-semibold text-sky-300 mb-3">2. Menstruation &amp; Gynecological Baseline</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <div id="prof-cycle-fields" class="sm:col-span-2 lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        <div>
-                            <label for="prof-cycle-length" class="block text-xs text-slate-400 mb-1">Cycle Length (days)</label>
-                            <input id="prof-cycle-length" type="number" min="21" max="45" class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="28">
-                        </div>
-                        <div>
-                            <label for="prof-cycle-day" class="block text-xs text-slate-400 mb-1">Current Cycle Day</label>
-                            <input id="prof-cycle-day" type="number" min="1" max="45" class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400" value="1">
-                        </div>
-                        <div>
-                            <label for="prof-flow-baseline" class="block text-xs text-slate-400 mb-1">Typical Menstrual Flow</label>
-                            <select id="prof-flow-baseline" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                                <option value="Light">Light (1-2 changes/day)</option>
-                                <option value="Moderate" selected>Moderate (2-3 changes/day)</option>
-                                <option value="Heavy">Heavy (4+ changes/day)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div id="prof-suppression-fields" class="hidden sm:col-span-2">
-                        <label for="prof-suppression-type" class="block text-xs text-slate-400 mb-1">Hormonal Suppression Regimen (Mode A)</label>
-                        <select id="prof-suppression-type" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                            <option value="Continuous Combined Oral Pill">Continuous Combined Oral Contraceptive Pill</option>
-                            <option value="Progestin-Only Suppression Pill">Progestin-Only Suppression Pill</option>
-                            <option value="LNG-IUD / Subdermal Implant">LNG-IUD / Subdermal Implant</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="prof-cramp-baseline" class="block text-xs text-slate-400 mb-1">Baseline Cramping History</label>
-                        <select id="prof-cramp-baseline" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                            <option value="None / Mild (0-3 NRS)" selected>None / Mild (0-3 NRS)</option>
-                            <option value="Moderate (4-6 NRS)">Moderate (4-6 NRS)</option>
-                            <option value="Severe Dysmenorrhea (7-10 NRS)">Severe Dysmenorrhea (7-10 NRS)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-slate-800 pt-4">
-                <h3 class="text-xs font-semibold text-sky-300 mb-3">3. Medical History &amp; Baseline Risk Factors</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-anemia" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">History of low iron / anemia</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-osteopenia" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">Low bone density / osteopenia</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-kidney" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">Kidney stone / high urine calcium (+500 mL water)</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-sans" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">Prior eye/head pressure sensitivity (SANS)</span>
-                    </label>
-                    <label id="hist-pcos-wrap" class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-pcos" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">PCOS / Endometriosis history</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-clotting" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">Factor V Leiden / clotting risk status</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-nsaid-allergy" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">NSAID / ibuprofen sensitivity</span>
-                    </label>
-                    <label class="flex items-center gap-2.5 bg-[#090d16] border border-slate-800 rounded px-3 py-2 cursor-pointer">
-                        <input id="hist-iodine-allergy" type="checkbox" class="w-4 h-4 accent-sky-500">
-                        <span class="text-xs text-slate-200">Iodine / potassium iodide (KI) sensitivity</span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="border-t border-slate-800 pt-4">
-                <h3 class="text-xs font-semibold text-sky-300 mb-3">4. Dietary &amp; Galley Nutrition Profile</h3>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label for="prof-diet" class="block text-xs text-slate-400 mb-1">Dietary Preference</label>
-                        <select id="prof-diet" class="w-full bg-[#090d16] border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400">
-                            <option value="Standard Space Ration">Standard Space Ration</option>
-                            <option value="Plant-Forward / Vegetarian">Plant-Forward / Vegetarian</option>
-                            <option value="Dairy-Free / Lactose-Free">Dairy-Free / Lactose-Free</option>
-                            <option value="Low-Sodium Baseline">Low-Sodium Baseline</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="prof-allergies" class="block text-xs text-slate-400 mb-1">Food Allergies / Intolerances</label>
-                        <input id="prof-allergies" type="text" class="w-full bg-[#090d16] border border-slate-700 rounded px-3 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400" value="None">
-                    </div>
-                </div>
-            </div>
-
-            <div class="border-t border-slate-800 pt-4 flex justify-end">
-                <button type="submit" class="text-xs font-semibold px-5 py-2 rounded bg-sky-600 hover:bg-sky-500 text-white">Save Profile &amp; Launch Monitor</button>
-            </div>
-        </form>
     </div>
-</div>
-
-<!-- Top Flight-Deck Header Bar -->
-<header class="bg-[#0e1420] border-b border-slate-800 px-5 py-3 flex flex-wrap gap-4 justify-between items-center shrink-0">
-    <div class="flex flex-wrap items-center gap-3">
-        <div class="flex items-baseline gap-2.5">
-            <h1 class="text-base font-bold tracking-wider text-slate-50">A.R.T.E.M.I.S.</h1>
-            <span class="text-xs text-slate-400">Daily Astronaut Health, Diet &amp; Autonomous Triage</span>
+    <div class="topbar-right">
+        <label class="env-field">
+            <span>Location</span>
+            <select id="env-selector">
+                <option value="0g_station">ISS microgravity (0g)</option>
+                <option value="0g_transit">Deep-space transit (0g)</option>
+                <option value="0.166g">Moon base habitat (0.166g)</option>
+                <option value="0.166g_rover">Moon rover / EVA (0.166g)</option>
+                <option value="0.38g">Mars habitat (0.38g)</option>
+            </select>
+        </label>
+        <span id="comms-status" class="pill is-live"><span class="dot"></span><span id="comms-text">Live Earth link</span></span>
+        <div class="readiness" title="Flight readiness: starts at 100 and drops for every reading in Drift or Critical.">
+            <div class="readiness-label">Flight<br>readiness</div>
+            <div class="readiness-score"><span id="readiness-score">100</span><small>/100</small></div>
+            <span id="readiness-badge"></span>
         </div>
-        <span id="comms-status" class="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800">Live Earth Support</span>
-        <button id="btn-edit-profile" type="button" class="inline-flex items-center gap-2 text-xs font-medium px-2.5 py-1 rounded border border-slate-700 bg-[#090d16] hover:border-sky-400 text-slate-200">
-            <span class="w-1.5 h-1.5 rounded-full bg-sky-400 shrink-0"></span>
-            <span id="header-profile-summary">ASTRO-084 · Cmdr. Elena Vance (34y)</span>
-            <span class="text-sky-300 font-semibold">Edit</span>
+        <button id="btn-glossary" class="icon-btn" type="button" title="Glossary of terms" aria-label="Open glossary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 8h6"/></svg>
         </button>
-    </div>
-
-    <div class="flex flex-wrap items-center gap-4">
-        <div class="flex items-center gap-2">
-            <label for="env-selector" class="text-xs text-slate-400">Where are you right now?</label>
-            <select id="env-selector" class="bg-[#090d16] border border-slate-700 text-slate-100 text-xs font-medium px-2.5 py-1.5 rounded outline-none focus:border-sky-400">
-                <option value="0g_station">ISS Microgravity (0g)</option>
-                <option value="0g_transit">Deep-Space Transit (0g - Delay)</option>
-                <option value="0.166g">Moon Base Habitat (0.166g - Full Lab)</option>
-                <option value="0.166g_rover">Moon Rover / EVA Suit (0.166g - Basic Kit)</option>
-                <option value="0.38g">Mars Habitat (0.38g - Autonomous)</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-2">
-            <label for="gender-selector" class="text-xs text-slate-400">Crew Profile</label>
-            <select id="gender-selector" class="bg-[#090d16] border border-slate-700 text-slate-100 text-xs font-medium px-2.5 py-1.5 rounded outline-none focus:border-sky-400">
-                <option value="FEMALE_CYCLE">Female - Mode B (Natural Cycle)</option>
-                <option value="FEMALE_SUPPRESSED">Female - Mode A (Suppression)</option>
-                <option value="MALE">Male</option>
-            </select>
-        </div>
-
-        <div class="flex items-center gap-3 pl-4 border-l border-slate-800">
-            <span class="text-xs text-slate-400">Flight Readiness</span>
-            <div class="flex items-center gap-2">
-                <span class="font-mono tabular-nums text-lg font-bold text-slate-50"><span id="readiness-score">100</span> <span class="text-xs font-normal text-slate-400">/ 100</span></span>
-                <span id="readiness-badge"></span>
-            </div>
-        </div>
+        <button id="btn-edit-profile" class="profile-chip" type="button" aria-label="Edit crew profile">
+            <span class="avatar" id="profile-initials">EV</span>
+            <span class="profile-chip-text"><b id="header-profile-name">Crew member</b><span id="header-profile-meta">ASTRO-084</span></span>
+        </button>
     </div>
 </header>
 
-<!-- Asymmetric 2-Pane Flight-Deck Viewport -->
-<main class="grid grid-cols-1 lg:grid-cols-12 flex-1">
-
-    <!-- Left Rail -->
-    <section class="lg:col-span-4 border-b lg:border-b-0 lg:border-r border-slate-800 flex flex-col bg-[#090d16]">
-        <div class="border-b border-slate-800 p-4 shrink-0 bg-[#0e1420]/50">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-xs font-semibold tracking-wide text-slate-300">Body &amp; Sustenance Map</h2>
-                <button id="btn-all-systems" type="button" class="text-xs font-medium px-2.5 py-1 rounded border bg-sky-500/15 text-sky-300 border-sky-500/40">All Systems</button>
-            </div>
-
-            <div class="grid grid-cols-12 items-center gap-2">
-                <div class="col-span-4 flex flex-col gap-2">
-                    <button type="button" data-region="NEURO/OCULAR" class="body-node-btn text-left px-2 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                        <div class="flex items-center gap-1.5">
-                            <span id="dot-neuro" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="text-xs font-medium text-slate-100 leading-tight">Eyes &amp; Head</span>
-                        </div>
-                        <div id="sub-neuro" class="text-[11px] text-slate-400 pl-3.5">Awaiting log</div>
-                    </button>
-                    <button type="button" data-region="BONE/HYDRATION" class="body-node-btn text-left px-2 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                        <div class="flex items-center gap-1.5">
-                            <span id="dot-bone" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="text-xs font-medium text-slate-100 leading-tight">Bones &amp; Fluid</span>
-                        </div>
-                        <div id="sub-bone" class="text-[11px] text-slate-400 pl-3.5">Awaiting log</div>
-                    </button>
-                </div>
-
-                <div class="col-span-4 flex justify-center">
-                    <svg viewBox="0 0 140 185" width="108" height="126" class="w-[108px] h-[126px]" role="img" aria-label="Interactive human physiological body map">
-                        <g fill="none" stroke="#334155" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <ellipse cx="70" cy="24" rx="14" ry="17"/>
-                            <path d="M63 40 L63 49 L44 55 Q34 59 32 72 L27 104 L34 106 L41 72 L46 72 L48 112 L42 175 L54 175 L64 122 L70 118 L76 122 L86 175 L98 175 L92 112 L94 72 L99 72 L106 106 L113 104 L108 72 Q106 59 96 55 L77 49 L77 40"/>
-                            <line x1="70" y1="44" x2="70" y2="112" stroke="#1e293b" stroke-dasharray="2 3"/>
-                        </g>
-                        <line x1="63" y1="26" x2="12" y2="26" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-                        <line x1="77" y1="18" x2="128" y2="18" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-                        <line x1="74" y1="74" x2="128" y2="74" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-                        <line x1="66" y1="116" x2="12" y2="116" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-                        <line x1="70" y1="104" x2="128" y2="104" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-                        <line x1="70" y1="88" x2="12" y2="88" stroke="#334155" stroke-width="1" stroke-dasharray="2 2"/>
-
-                        <g class="cursor-pointer svg-body-node" data-region="NEURO/OCULAR"><circle cx="63" cy="26" r="9" fill="transparent"/><circle id="svg-node-neuro" cx="63" cy="26" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                        <g class="cursor-pointer svg-body-node" data-region="MENTAL/SLEEP"><circle cx="77" cy="18" r="9" fill="transparent"/><circle id="svg-node-mental" cx="77" cy="18" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                        <g class="cursor-pointer svg-body-node" data-region="CARDIO/AIR"><circle cx="74" cy="74" r="9" fill="transparent"/><circle id="svg-node-cardio" cx="74" cy="74" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                        <g class="cursor-pointer svg-body-node" data-region="DIET/SUSTENANCE"><circle cx="70" cy="88" r="9" fill="transparent"/><circle id="svg-node-diet" cx="70" cy="88" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                        <g class="cursor-pointer svg-body-node" data-region="BONE/HYDRATION"><circle cx="66" cy="116" r="9" fill="transparent"/><circle id="svg-node-bone" cx="66" cy="116" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                        <g class="cursor-pointer svg-body-node" data-region="GYN/CYCLE"><circle cx="70" cy="104" r="9" fill="transparent"/><circle id="svg-node-gyn" cx="70" cy="104" r="4.5" fill="#64748b" stroke="#090d16" stroke-width="1.5"/></g>
-                    </svg>
-                </div>
-
-                <div class="col-span-4 flex flex-col gap-2">
-                    <button type="button" data-region="MENTAL/SLEEP" class="body-node-btn text-left px-2 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                        <div class="flex items-center gap-1.5">
-                            <span id="dot-mental" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="text-xs font-medium text-slate-100 leading-tight">Sleep &amp; Focus</span>
-                        </div>
-                        <div id="sub-mental" class="text-[11px] text-slate-400 pl-3.5">Awaiting log</div>
-                    </button>
-                    <button type="button" data-region="CARDIO/AIR" class="body-node-btn text-left px-2 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                        <div class="flex items-center gap-1.5">
-                            <span id="dot-cardio" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                            <span class="text-xs font-medium text-slate-100 leading-tight">Heart, Air &amp; Suit</span>
-                        </div>
-                        <div id="sub-cardio" class="text-[11px] text-slate-400 pl-3.5">Awaiting log</div>
-                    </button>
+<main class="layout">
+    <!-- ========================================================== BODY + LIST -->
+    <section class="col col-body" aria-label="Body map and readings">
+        <div class="card body-card">
+            <div class="card-head">
+                <h2>Body map</h2>
+                <div class="seg" role="group" aria-label="Body view">
+                    <button type="button" data-view="organs" aria-pressed="true">Organs</button>
+                    <button type="button" data-view="surface" aria-pressed="false">Surface</button>
+                    <button type="button" data-view="skeleton" aria-pressed="false">Skeleton</button>
                 </div>
             </div>
-
-            <div class="mt-2.5 pt-2.5 border-t border-slate-800/80 flex flex-col gap-1.5">
-                <button type="button" data-region="DIET/SUSTENANCE" class="body-node-btn w-full flex items-center justify-between px-3 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                    <div class="flex items-center gap-2">
-                        <span id="dot-diet" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                        <span class="text-xs font-medium text-slate-100">Food, Water, Iron &amp; Vitamins</span>
-                    </div>
-                    <span id="sub-diet" class="text-[11px] text-slate-400">Awaiting log</span>
-                </button>
-                <div id="gyn-node-bar">
-                    <button type="button" data-region="GYN/CYCLE" class="body-node-btn w-full flex items-center justify-between px-3 py-1.5 rounded border border-slate-800 bg-[#090d16] hover:border-slate-600">
-                        <div class="flex items-center gap-2">
-                            <span id="dot-gyn" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
-                            <span id="label-gyn-node" class="text-xs font-medium text-slate-100">Cycle, Blood Iron &amp; Comfort (Mode B)</span>
-                        </div>
-                        <span id="sub-gyn" class="text-[11px] text-slate-400">Awaiting log</span>
-                    </button>
+            <div class="body-stage" id="body-stage">
+                <canvas id="body-canvas" tabindex="0" aria-label="3D body. Drag or use arrow keys to rotate."></canvas>
+                <div class="hotspots" id="body-hotspots"></div>
+                <div class="stage-tools">
+                    <button class="icon-btn" type="button" data-zoom="1" aria-label="Zoom in" title="Zoom in"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+                    <button class="icon-btn" type="button" data-zoom="-1" aria-label="Zoom out" title="Zoom out"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+                    <button class="icon-btn" type="button" id="btn-view-reset" aria-label="Reset view" title="Reset view"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg></button>
                 </div>
+                <div class="stage-presets seg" role="group" aria-label="Camera angle">
+                    <button type="button" data-preset="front">Front</button>
+                    <button type="button" data-preset="side">Side</button>
+                    <button type="button" data-preset="back">Back</button>
+                </div>
+                <p class="stage-hint">Drag to rotate</p>
+                <div class="body-fallback" id="body-fallback" hidden>3D view needs WebGL. Use the body areas below.</div>
             </div>
+            <div class="region-grid" id="region-chips"></div>
         </div>
 
-        <div id="telemetry-list" class="divide-y divide-slate-800/80 flex-1 overflow-y-auto min-h-[200px] max-h-[420px]"></div>
-
-        <div class="border-t border-slate-800 p-4 bg-[#0e1420] shrink-0 flex flex-col gap-3">
-            <div>
-                <div class="flex items-center justify-between mb-1.5">
-                    <span class="text-xs font-medium text-slate-400">Quick Demo Scenarios</span>
-                    <button id="btn-load-14d" type="button" class="text-[11px] font-semibold px-2 py-0.5 rounded bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-700/70">Load 14-Day Mission Log</button>
-                </div>
-                <div class="grid grid-cols-3 gap-1.5">
-                    <button id="btn-demo-normal" type="button" class="text-xs font-medium py-1.5 px-2 rounded bg-[#090d16] hover:bg-emerald-950/40 text-emerald-300 border border-slate-700">Green (Nominal)</button>
-                    <button id="btn-demo-drift" type="button" class="text-xs font-medium py-1.5 px-2 rounded bg-[#090d16] hover:bg-amber-950/40 text-amber-300 border border-slate-700">Yellow (Drift)</button>
-                    <button id="btn-demo-emergency" type="button" class="text-xs font-medium py-1.5 px-2 rounded bg-[#090d16] hover:bg-red-950/40 text-red-300 border border-slate-700">Red (Critical)</button>
-                </div>
+        <div class="card list-card">
+            <div class="card-head">
+                <h2 id="list-title">All readings</h2>
+                <button id="btn-all-systems" class="btn btn-ghost btn-sm" type="button" hidden>Show all</button>
             </div>
-
-            <div class="border-t border-slate-800 pt-3">
-                <label for="override-metric" class="block text-xs font-medium text-slate-400 mb-1.5">Log a Sensor, Meal or Check-In Reading</label>
-                <div class="flex flex-col gap-2">
-                    <select id="override-metric" class="bg-[#090d16] border border-slate-700 text-slate-100 text-xs font-medium px-2.5 py-1.5 rounded outline-none focus:border-sky-400"></select>
-                    <div class="flex gap-2">
-                        <input type="number" id="override-value" step="any" class="bg-[#090d16] border border-slate-700 text-slate-100 font-mono tabular-nums text-xs px-3 py-1.5 rounded outline-none focus:border-sky-400 flex-1" placeholder="Enter value">
-                        <button id="btn-log" type="button" class="bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold px-4 py-1.5 rounded">Log</button>
-                    </div>
-                </div>
-            </div>
+            <div id="metric-list" class="metric-list"></div>
         </div>
     </section>
 
-    <!-- Right Main Workspace -->
-    <section class="lg:col-span-8 flex flex-col p-5 gap-5 bg-[#090d16]">
-        <div class="flex flex-col gap-3 shrink-0">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2.5">
-                        <h2 id="inspect-title" class="text-lg font-semibold text-slate-50">Select a Metric</h2>
-                        <span id="inspect-badge" class="shrink-0"></span>
-                    </div>
-                    <div id="inspect-provenance" class="text-xs text-slate-400 mt-0.5">Personalized Safe Zone (adjusted for your body, profile &amp; current mission location)</div>
+    <!-- ============================================================ INSPECTOR -->
+    <section class="col col-main" id="inspector" aria-label="Selected reading" tabindex="-1">
+        <article class="card">
+            <div class="inspector-head">
+                <div>
+                    <div class="eyebrow" id="inspect-eyebrow"></div>
+                    <h1 class="inspector-title" id="inspect-title">Select a reading</h1>
+                    <div id="inspect-badge"></div>
                 </div>
-                <div class="flex items-center gap-4 shrink-0">
-                    <span id="inspect-current-readout" class="font-mono tabular-nums text-xl font-bold text-slate-50"></span>
-                    <div class="flex items-center gap-1 bg-[#0e1420] p-0.5 rounded border border-slate-800">
-                        <button id="btn-14d" type="button" class="text-xs font-mono font-semibold px-2.5 py-1 rounded bg-sky-600 text-white">14D</button>
-                        <button id="btn-30d" type="button" class="text-xs font-mono font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-slate-200">30D</button>
-                    </div>
+                <div class="readout">
+                    <div class="readout-value" id="inspect-readout">--</div>
+                    <div class="readout-sub" id="inspect-readout-sub"></div>
                 </div>
             </div>
 
-            <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
-                <div class="flex items-center gap-4">
-                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-2 bg-emerald-500/20 border border-emerald-500/60 inline-block"></span><span>Safe Normal Zone</span></span>
-                    <span class="inline-flex items-center gap-1.5"><span class="w-4 border-t-2 border-dashed border-amber-400 inline-block"></span><span>7-day forecast trajectory</span></span>
-                </div>
-                <span id="inspect-range-hint" class="font-mono tabular-nums text-xs text-slate-400"></span>
-            </div>
+            <div class="gauge" id="inspect-gauge" aria-hidden="true"></div>
 
-            <div class="h-56 relative border border-slate-800 bg-[#0e1420]/60 rounded p-2">
-                <canvas id="trendChart"></canvas>
-                <div id="chart-empty-overlay" class="hidden absolute inset-0 flex items-center justify-center p-6 text-center pointer-events-none">
-                    <div class="bg-[#090d16]/90 border border-slate-700 rounded px-4 py-3 text-xs text-slate-300 max-w-md">
-                        Log your first reading or click <span class="text-sky-300 font-semibold">'Load 14-Day Mission Log'</span> to see your multi-day trendline.
-                    </div>
+            <div class="chart-toolbar">
+                <div class="legend">
+                    <span><i class="swatch-zone"></i>Safe zone</span>
+                    <span><i class="swatch-line"></i>Your readings</span>
+                    <span><i class="swatch-fc"></i>7-day forecast</span>
+                </div>
+                <div class="seg" role="group" aria-label="Timeline length" id="range-seg">
+                    <button type="button" data-range="14">14D</button>
+                    <button type="button" data-range="30">30D</button>
+                    <button type="button" data-range="90">90D</button>
+                    <button type="button" data-range="all">Mission</button>
                 </div>
             </div>
-            <div id="early-warning-container"></div>
+            <div class="chart-box">
+                <canvas id="trend-chart" aria-label="Trend chart"></canvas>
+                <div class="chart-empty" id="chart-empty" hidden></div>
+            </div>
+            <div class="chart-meta"><span id="inspect-zone"></span><span id="inspect-source"></span></div>
+            <div id="early-warning" style="margin-top:12px"></div>
+
+            <form class="log-form" id="log-form" autocomplete="off">
+                <label for="log-value" id="log-label">Log today's reading</label>
+                <div class="input-unit"><input id="log-value" type="number" step="any" inputmode="decimal" placeholder="Enter value"><span id="log-unit"></span></div>
+                <button class="btn btn-primary" type="submit">Log reading</button>
+            </form>
+        </article>
+
+        <article class="card">
+            <div class="card-head"><h2>What to do now</h2><span class="hint" id="actions-hint"></span></div>
+            <div class="action-list" id="actions"></div>
+        </article>
+
+        <article class="card">
+            <div class="card-head"><h2>Understand this reading</h2></div>
+            <div class="explain">
+                <div><div class="section-label">What today's result means</div><p id="explain-today">--</p></div>
+                <div><div class="section-label">Why this test matters</div><p id="explain-why">--</p></div>
+                <div>
+                    <div class="section-label">How to measure</div>
+                    <div class="how"><div id="explain-pic"></div><ol id="explain-how"></ol></div>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <!-- ============================================================ SIDE TABS -->
+    <aside class="col col-side" aria-label="Daily tools">
+        <div class="tabs" role="tablist" aria-label="Daily tools">
+            <button type="button" role="tab" id="tab-today" aria-controls="panel-today" aria-selected="true">Today</button>
+            <button type="button" role="tab" id="tab-food" aria-controls="panel-food" aria-selected="false">Food</button>
+            <button type="button" role="tab" id="tab-mission" aria-controls="panel-mission" aria-selected="false">Mission</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-slate-800">
-            <div class="flex flex-col gap-4">
-                <div>
-                    <h3 class="text-xs font-semibold text-slate-400 mb-2">What To Do Now</h3>
-                    <div id="alerts-container" class="flex flex-col gap-2"></div>
+        <!-- ---------------------------------------------------------- TODAY -->
+        <div class="tab-panel is-active" id="panel-today" role="tabpanel" aria-labelledby="tab-today">
+            <section class="card" aria-labelledby="checkin-title">
+                <div id="reminder-banner" class="banner is-reminder" hidden></div>
+                <div id="reward-banner" class="banner is-reward" hidden></div>
+                <div class="streak">
+                    <div class="streak-num" id="streak-count">0</div>
+                    <div class="streak-meta"><b id="checkin-title">Day streak</b><br><span id="streak-note">Finish today's check-ins to start one</span></div>
+                    <div class="week" id="streak-week" aria-label="Last 7 days"></div>
                 </div>
+                <div class="progress" aria-hidden="true"><i id="checkin-progress" style="width:0%"></i></div>
+                <div class="row-between small muted"><span>Today's check-ins</span><span class="num" id="checkin-count">0 / 0</span></div>
+                <ul class="tasks" id="tasks"></ul>
+                <hr class="divider">
+                <div class="row-between">
+                    <div><b class="small">Busy / spacewalk mode</b><div class="small muted" id="freeze-desc">Protects your streak and lowers today's workout by 15%.</div></div>
+                    <label class="switch"><input type="checkbox" id="freeze-toggle" aria-label="Busy or spacewalk mode"><span class="track"></span></label>
+                </div>
+                <div class="row-between" style="margin-top:12px">
+                    <div><b class="small">Daily reminder</b><div class="small muted">Friendly nudge if check-ins are left</div></div>
+                    <div class="row"><input type="time" id="reminder-time" value="19:00" style="width:110px" aria-label="Reminder time"><label class="switch" title="Browser notifications"><input type="checkbox" id="notify-toggle" aria-label="Browser notifications"><span class="track"></span></label></div>
+                </div>
+            </section>
 
-                <div class="bg-[#0e1420] border border-slate-800 rounded p-3">
-                    <div class="flex items-center justify-between gap-2 mb-2">
-                        <span class="text-xs font-semibold text-sky-300">Daily Workout &amp; Spacewalk Calorie Scaler</span>
-                        <span id="t-active-badge" class="font-mono tabular-nums text-xs font-bold text-emerald-300">2,150 kcal/d</span>
+            <section class="card" id="mind-card" aria-labelledby="mind-title">
+                <div class="card-head"><h2 id="mind-title">Mind &amp; sleep check-in</h2><button class="btn btn-ghost btn-sm" type="button" id="btn-wearable" title="Pull last night's numbers from the sleep watch and chest strap (simulated)">Sync wearable</button></div>
+                <form id="mind-form" class="stack">
+                    <label class="field"><span>Hours slept last night</span><div class="input-unit"><input type="number" id="mind-sleep" min="0" max="16" step="0.25" value="7"><span>hours</span></div></label>
+                    <div class="field">
+                        <span>How sleepy do you feel? <span class="faint">(KSS)</span></span>
+                        <div class="range-row"><input type="range" id="mind-kss" min="1" max="9" step="1" value="3"><span class="range-value" id="mind-kss-val">3</span></div>
+                        <div class="range-ends"><span>1 very alert</span><span>9 fighting sleep</span></div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 mb-2.5">
-                        <div>
-                            <label for="exertion-ared" class="block text-[11px] text-slate-400 mb-1">Gym Lifting (kg)</label>
-                            <input id="exertion-ared" type="number" min="0" max="15000" step="100" value="0" class="w-full bg-[#090d16] border border-slate-700 rounded px-2 py-1 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400">
-                        </div>
-                        <div>
-                            <label for="exertion-treadmill" class="block text-[11px] text-slate-400 mb-1">Treadmill (km)</label>
-                            <input id="exertion-treadmill" type="number" min="0" max="30" step="0.5" value="0" class="w-full bg-[#090d16] border border-slate-700 rounded px-2 py-1 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400">
-                        </div>
-                        <div>
-                            <label for="exertion-eva" class="block text-[11px] text-slate-400 mb-1">Spacewalk (hrs)</label>
-                            <input id="exertion-eva" type="number" min="0" max="12" step="0.5" value="0" class="w-full bg-[#090d16] border border-slate-700 rounded px-2 py-1 text-xs font-mono tabular-nums text-slate-100 outline-none focus:border-sky-400">
-                        </div>
+                    <div class="field">
+                        <span>Stress level today</span>
+                        <div class="range-row"><input type="range" id="mind-stress" min="0" max="10" step="1" value="2"><span class="range-value" id="mind-stress-val">2</span></div>
+                        <div class="range-ends"><span>0 calm</span><span>10 overwhelmed</span></div>
                     </div>
-                    <div id="t-active-breakdown" class="text-[11px] text-slate-400 font-mono tabular-nums leading-relaxed">Resting Goal: 2,150 kcal + Exercise: 0 + Spacewalk: 0 = Daily Target: 2,150 kcal</div>
-                </div>
+                    <button class="btn btn-primary" type="submit">Save check-in</button>
+                </form>
+            </section>
 
-                <div class="border-t border-slate-800 pt-3">
-                    <h3 class="text-xs font-semibold text-slate-400 mb-1">What Today's Result Means (In Everyday Words)</h3>
-                    <p id="inspect-today-meaning" class="text-sm text-slate-200 leading-relaxed">--</p>
-                </div>
-
-                <div class="border-t border-slate-800 pt-3">
-                    <h3 class="text-xs font-semibold text-slate-400 mb-1">Why This Test Matters</h3>
-                    <p id="inspect-definition" class="text-sm text-slate-200 leading-relaxed">--</p>
-                </div>
-
-                <div class="border-t border-slate-800 pt-3">
-                    <h3 class="text-xs font-semibold text-slate-400 mb-2">Where to Place Sensor / How to Log</h3>
-                    <div id="inspect-sensor-svg" class="mb-2.5"></div>
-                    <p id="inspect-sensor" class="text-sm text-slate-200 leading-relaxed">--</p>
-                </div>
-            </div>
-
-            <div class="flex flex-col gap-4 md:border-l md:border-slate-800 md:pl-6">
-                <div class="bg-[#0e1420] border border-slate-800 rounded p-3">
-                    <div class="flex items-center justify-between gap-2 mb-1.5">
-                        <span class="text-xs font-semibold text-slate-200">Astronaut Profile &amp; Medical History</span>
-                        <button id="btn-edit-profile-inline" type="button" class="text-[11px] font-semibold text-sky-300 hover:text-sky-200">Update Setup</button>
+            <section class="card" id="journal-card" aria-labelledby="journal-title">
+                <div class="card-head"><h2 id="journal-title">Journal</h2><span class="hint">Scored on this device only</span></div>
+                <form id="journal-form" class="stack">
+                    <label class="sr-only" for="journal-text">Journal entry</label>
+                    <textarea id="journal-text" placeholder="How was today? What's on your mind?"></textarea>
+                    <div class="radio-seg" role="radiogroup" aria-label="Privacy">
+                        <label><input type="radio" name="journal-privacy" value="private" checked> Private (stays on device)</label>
+                        <label><input type="radio" name="journal-privacy" value="share"> Share with flight surgeon</label>
                     </div>
-                    <div id="crew-profile-summary-card" class="text-xs text-slate-300 space-y-1.5 leading-relaxed"></div>
-                </div>
+                    <button class="btn btn-secondary" type="submit">Save entry</button>
+                </form>
+                <div id="journal-support" style="margin-top:12px"></div>
+                <ul class="entries" id="journal-entries" style="margin-top:12px"></ul>
+            </section>
 
-                <div>
-                    <h3 class="text-xs font-semibold text-slate-400 mb-2">Your Daily Targets &amp; Available Medical Tools</h3>
-                    <div class="divide-y divide-slate-800/80 border-y border-slate-800">
-                        <div class="py-2 flex justify-between items-center gap-3">
-                            <span class="text-xs text-slate-400">Daily calorie goal</span>
-                            <span id="calorie-target" class="text-sm font-bold font-mono tabular-nums text-sky-300">2,150 kcal/d</span>
+            <section class="card" id="cycle-card" aria-labelledby="cycle-title">
+                <div class="card-head"><h2 id="cycle-title">Cycle &amp; comfort check-in</h2><span class="hint" id="cycle-mode-hint"></span></div>
+                <form id="cycle-form" class="stack">
+                    <div id="cycle-natural" class="stack">
+                        <label class="field"><span>Period flow today (pad/cup changes, 0 if none)</span><input type="number" id="cyc-flow" min="0" max="15" step="1" value="0"></label>
+                    </div>
+                    <div id="cycle-suppressed" class="stack">
+                        <div class="field"><span>Did you take today's suppression pill?</span>
+                            <div class="radio-seg"><label><input type="radio" name="cyc-pill" value="yes" checked> Yes</label><label><input type="radio" name="cyc-pill" value="no"> Missed it</label></div>
                         </div>
-                        <div class="py-2 flex justify-between items-center gap-3">
-                            <span class="text-xs text-slate-400">Food split (Protein / Carbs / Fat)</span>
-                            <span id="macro-targets" class="text-xs font-bold font-mono tabular-nums text-slate-200">87g P · 282g C · 66g F</span>
-                        </div>
-                        <div class="py-2 flex justify-between items-center gap-3">
-                            <span class="text-xs text-slate-400">Daily water target</span>
-                            <span id="hydration-target" class="text-sm font-bold font-mono tabular-nums text-sky-300">2,100 mL</span>
-                        </div>
-                        <div class="py-2 flex justify-between items-center gap-3">
-                            <span class="text-xs text-slate-400">Salt limit / Daily iron target</span>
-                            <span id="sodium-iron-target" class="text-xs font-bold font-mono tabular-nums text-emerald-300">Salt &lt;3,000 mg · Iron &ge;18 mg</span>
-                        </div>
-                        <div class="py-2 flex justify-between items-center gap-3">
-                            <span class="text-xs text-slate-400">Daily workout load target</span>
-                            <span id="exercise-target" class="text-sm font-bold font-mono tabular-nums text-emerald-300">100% Baseline</span>
-                        </div>
-                        <div class="py-2 flex justify-between items-start gap-4">
-                            <span class="text-xs text-slate-400 shrink-0">Daily meal plan</span>
-                            <span id="galley-protocol" class="text-xs font-medium text-slate-200 text-right">1,500 IU Vitamin D3 + High-Iron Ration</span>
-                        </div>
-                        <div class="py-2 flex justify-between items-start gap-4">
-                            <span class="text-xs text-slate-400 shrink-0">Available medical tools</span>
-                            <span id="location-med-kit" class="text-xs font-medium text-slate-200 text-right">ISS Full Med Bay</span>
+                        <div class="field"><span>Any breakthrough bleeding today?</span>
+                            <div class="radio-seg"><label><input type="radio" name="cyc-bleed" value="none" checked> None</label><label><input type="radio" name="cyc-bleed" value="spot"> Spotting</label><label><input type="radio" name="cyc-bleed" value="heavy"> Heavy</label></div>
                         </div>
                     </div>
-                    <div id="dynamic-diet-alert" class="mt-2"></div>
-                </div>
-
-                <div class="bg-[#0e1420] border border-slate-800 rounded p-3">
-                    <div class="text-xs font-semibold text-slate-300 mb-1.5">What This Location Means For Your Body</div>
-                    <div id="env-context-details" class="text-xs text-slate-400 space-y-1 leading-relaxed"></div>
-                </div>
-
-                <div class="bg-[#0e1420] border border-slate-800 rounded p-3 flex items-center justify-between gap-3">
-                    <div>
-                        <div class="text-xs font-semibold text-slate-100">Busy / Spacewalk Mode (Protect Streak)</div>
-                        <div id="freeze-status-desc" class="text-xs text-slate-400 mt-0.5">Freezes your streak during EVAs and reduces workout load by 15%.</div>
+                    <div class="field">
+                        <span>Cramp pain (0–10)</span>
+                        <div class="range-row"><input type="range" id="cyc-cramp" min="0" max="10" step="1" value="0"><span class="range-value" id="cyc-cramp-val">0</span></div>
                     </div>
-                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
-                        <input type="checkbox" id="eva-freeze-toggle" class="sr-only peer">
-                        <div class="w-10 h-5 bg-slate-700 rounded-full peer peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-sky-600"></div>
+                    <label class="field"><span>Pelvic comfort (optional, private)</span>
+                        <select id="cyc-comfort"><option value="">Skip</option><option value="1">1 · very tense</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5 · relaxed</option></select>
                     </label>
-                </div>
-
-                <div>
-                    <div id="routine-reminder-banner" class="mb-3 p-2.5 rounded border border-sky-800/70 bg-sky-950/30 text-xs text-sky-200 leading-relaxed">Friendly reminder: Complete your quick 30-second food, cycle &amp; focus check-in to keep your daily streak going!</div>
-                    <div id="routine-reward-banner" class="hidden mb-3 p-2.5 rounded border border-emerald-600 bg-emerald-950/50 text-xs text-emerald-200 font-medium">Daily check-ins complete!</div>
-
-                    <div class="flex justify-between items-end mb-2">
-                        <div>
-                            <h3 class="text-xs font-semibold text-slate-300">30-Second Daily Check-In Tasks</h3>
-                            <p class="text-xs text-slate-400 mt-0.5">Progress: <span id="routine-progress" class="font-mono tabular-nums font-semibold text-sky-300">0 / 4</span> tasks</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-slate-400 block">Daily Streak</span>
-                            <div class="flex items-center justify-end gap-1.5">
-                                <span id="streak-frozen-pill" class="hidden text-[11px] font-medium px-2 py-0.5 rounded-full bg-sky-950 text-sky-300 border border-sky-700">Protected</span>
-                                <span id="streak-counter" class="text-xl font-bold font-mono tabular-nums text-emerald-400">0</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="divide-y divide-slate-800/80 border-y border-slate-800">
-                        <label class="flex items-center gap-3 py-2 cursor-pointer px-1"><input type="checkbox" class="routine-check w-4 h-4 accent-sky-500"><span class="text-sm text-slate-200">Scan NASA food pouches &amp; 30-sec meal slider</span></label>
-                        <div class="py-2 px-1">
-                            <div class="flex items-center justify-between gap-2">
-                                <label class="flex items-center gap-3 cursor-pointer"><input type="checkbox" id="check-pvt" class="routine-check w-4 h-4 accent-sky-500"><span class="text-sm text-slate-200">Complete 3-round reaction focus test</span></label>
-                                <button id="btn-run-pvt" type="button" class="text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white px-2.5 py-1 rounded">Run Test</button>
-                            </div>
-                            <div id="pvt-test-area" class="hidden mt-2.5"><div id="pvt-box" class="bg-[#0e1420] border border-slate-700 rounded p-5 text-center cursor-pointer select-none"><span class="text-sm font-semibold text-slate-300">Click to start</span></div></div>
-                        </div>
-                        <label id="gyn-checkin-row" class="flex items-center gap-3 py-2 cursor-pointer px-1"><input type="checkbox" class="routine-check w-4 h-4 accent-sky-500"><span id="gyn-checkin-label" class="text-sm text-slate-200">Log period flow, cramp pain &amp; comfort relief</span></label>
-                        <label class="flex items-center gap-3 py-2 cursor-pointer px-1"><input type="checkbox" class="routine-check w-4 h-4 accent-sky-500"><span class="text-sm text-slate-200">Take scheduled Vit D3, electrolytes &amp; iron ration</span></label>
-                    </div>
-                </div>
-            </div>
+                    <button class="btn btn-primary" type="submit">Save cycle check-in</button>
+                </form>
+            </section>
         </div>
-    </section>
+
+        <!-- ----------------------------------------------------------- FOOD -->
+        <div class="tab-panel" id="panel-food" role="tabpanel" aria-labelledby="tab-food">
+            <section class="card" aria-labelledby="activity-title">
+                <div class="card-head"><h2 id="activity-title">Today's activity</h2><span class="num small" id="t-active-badge"></span></div>
+                <div class="grid-3">
+                    <label class="field"><span>Gym lifting (kg)</span><input id="exertion-ared" type="number" min="0" max="15000" step="100" value="0"></label>
+                    <label class="field"><span>Treadmill (km)</span><input id="exertion-treadmill" type="number" min="0" max="30" step="0.5" value="0"></label>
+                    <label class="field"><span>Spacewalk (hrs)</span><input id="exertion-eva" type="number" min="0" max="12" step="0.5" value="0"></label>
+                </div>
+                <p class="small faint num" id="t-active-breakdown" style="margin-top:10px"></p>
+            </section>
+
+            <section class="card" aria-labelledby="food-title">
+                <div class="card-head"><h2 id="food-title">Food log</h2><span class="hint">Sample galley menu · approximate values</span></div>
+                <div class="stack">
+                    <label class="field"><span>Scan or pick a pouch</span><select id="food-select"></select></label>
+                    <div class="field">
+                        <span>How much did you eat?</span>
+                        <div class="range-row"><input type="range" id="food-portion" min="25" max="100" step="25" value="100"><span class="range-value" id="food-portion-val">100%</span></div>
+                    </div>
+                    <button class="btn btn-secondary" type="button" id="btn-food-add">Add to today</button>
+                    <div class="chips" aria-label="Quick drinks">
+                        <button class="btn btn-secondary btn-sm" type="button" data-quick="water">+ Water 250 mL</button>
+                        <button class="btn btn-secondary btn-sm" type="button" data-quick="electro">+ Electrolyte</button>
+                        <button class="btn btn-secondary btn-sm" type="button" data-quick="coffee">+ Coffee</button>
+                        <button class="btn btn-secondary btn-sm" type="button" data-quick="multi">+ Multivitamin</button>
+                    </div>
+                    <ul class="meals" id="food-items"></ul>
+                    <div class="stack" id="food-meters"></div>
+                    <button class="btn btn-primary" type="button" id="btn-food-save">Save day's totals to health log</button>
+                    <p class="small faint" id="food-saved"></p>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="targets-title">
+                <div class="card-head"><h2 id="targets-title">Your daily targets</h2><span class="hint">From your profile</span></div>
+                <dl class="kv" id="targets"></dl>
+                <div id="diet-alerts" style="margin-top:10px"></div>
+            </section>
+        </div>
+
+        <!-- -------------------------------------------------------- MISSION -->
+        <div class="tab-panel" id="panel-mission" role="tabpanel" aria-labelledby="tab-mission">
+            <section class="card context" aria-labelledby="loc-title">
+                <div class="card-head"><h2 id="loc-title">What this location means</h2></div>
+                <div class="stack">
+                    <div class="callout is-info small" id="loc-kit"></div>
+                    <dl id="loc-context"></dl>
+                    <div id="delay-control" hidden>
+                        <div class="field">
+                            <span>One-way signal delay to Earth</span>
+                            <div class="range-row"><input type="range" id="delay-range" min="1" max="35" step="1" value="18"><span class="range-value" id="delay-val">18 min</span></div>
+                            <div class="range-ends"><span>closest approach</span><span>solar conjunction</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="profile-title">
+                <div class="card-head"><h2 id="profile-title">Crew profile &amp; medical history</h2><button class="btn btn-ghost btn-sm" type="button" id="btn-edit-profile-inline">Edit</button></div>
+                <div class="stack small" id="profile-summary"></div>
+            </section>
+
+            <section class="card" aria-labelledby="demo-title">
+                <div class="card-head"><h2 id="demo-title">Demo scenarios</h2></div>
+                <div class="stack">
+                    <button class="btn btn-secondary" type="button" id="btn-load-log">Load 45-day mission log</button>
+                    <div class="grid-3">
+                        <button class="btn btn-secondary" type="button" id="btn-demo-normal">Normal</button>
+                        <button class="btn btn-secondary" type="button" id="btn-demo-drift">Drift</button>
+                        <button class="btn btn-secondary" type="button" id="btn-demo-critical">Critical</button>
+                    </div>
+                    <p class="small faint">Scenarios adapt to the selected crew profile and location.</p>
+                </div>
+            </section>
+
+            <section class="card" aria-labelledby="data-title">
+                <div class="card-head"><h2 id="data-title">Data</h2><span class="hint">Saved in this browser</span></div>
+                <div class="stack">
+                    <button class="btn btn-secondary" type="button" id="btn-export">Download snapshot (diet-spec JSON)</button>
+                    <button class="btn btn-secondary" type="button" id="btn-export-mars">Download snapshot (Mars-spec JSON)</button>
+                    <button class="btn btn-ghost" type="button" id="btn-clear">Clear all logged data</button>
+                </div>
+            </section>
+        </div>
+    </aside>
 </main>
 
-<script>
-    const PROFILE_STORAGE_KEY = 'artemis_crew_profile_v2';
-    const VALID_SEX_MODES = ['FEMALE_CYCLE', 'FEMALE_SUPPRESSED', 'MALE'];
-
-    // Every location now covers all 4 physiological regions (including Bones & Fluid!)
-    const envMetricsMap = {
-        '0g_station': ['onsd', 'iop', 'co2', 'blood_co2', 'ijv', 'calcium', 'bmd', 'osmolality', 'usg', 'sleep', 'hrv', 'pvt'],
-        '0g_transit': ['onsd', 'iop', 'rad', 'co2', 'blood_co2', 'ijv', 'calcium', 'bmd', 'osmolality', 'usg', 'sleep', 'hrv', 'pvt'],
-        '0.166g': ['rad', 'dust', 'temp', 'emuco2', 'ortho', 'spine', 'osmolality', 'usg', 'calcium', 'sleep', 'hrv'],
-        '0.166g_rover': ['rad', 'temp', 'emuco2', 'ortho', 'osmolality', 'usg', 'sleep', 'hrv'],
-        '0.38g': ['onsd', 'iop', 'rad', 'co2', 'blood_co2', 'perchlorate', 'ijv', 'osmolality', 'usg', 'calcium', 'bmd', 'sleep', 'hrv', 'pvt']
-    };
-
-    const sustenanceMetricsList = [
-        'caloric_balance', 'protein_intake', 'carbs_pct', 'fats_pct',
-        'dietary_fiber', 'fluid_intake', 'dietary_iron', 'sodium_intake',
-        'potassium_intake', 'magnesium_intake', 'iodine_intake', 'vit_c_pct'
-    ];
-
-    const gynMetricsByProfile = {
-        'FEMALE_CYCLE': ['menstrual_flow', 'cramping_pain', 'ferritin', 'hemoglobin', 'sexual_oxytocin'],
-        'FEMALE_SUPPRESSED': ['pill_missed', 'cramping_pain', 'ferritin', 'hemoglobin', 'pill_potency', 'sexual_oxytocin'],
-        'MALE': []
-    };
-
-    const flat14 = (v, alt = v) => [v, alt, v, alt, v, v, alt, v, alt, v, alt, v, alt, v];
-
-    const nominalBaselines14D = {
-        onsd: flat14(5.4, 5.5), iop: flat14(16, 17), co2: flat14(2.1, 2.2), blood_co2: flat14(39, 40),
-        ijv: flat14(16, 17), sleep: flat14(7.0, 7.2), hrv: flat14(45, 47), pvt: flat14(3, 4),
-        dust: flat14(2.2, 2.3), temp: flat14(37.1, 37.2), rad: flat14(0.7, 0.8), spine: flat14(0.8, 0.9),
-        emuco2: flat14(2.6, 2.7), ortho: flat14(91, 92), osmolality: flat14(288, 290), usg: flat14(1.019, 1.020),
-        calcium_iss: flat14(310, 320), calcium_mars: flat14(260, 275),
-        perchlorate: flat14(1.8, 2.0), bmd: flat14(-0.2, -0.3),
-        pill_missed: flat14(0, 0), menstrual_flow: [0,0,0,0,0,0,0,0,0,2,3,2,1,0],
-        cramping_pain: [0,0,0,0,0,0,0,0,1,2,2,1,0,0], ferritin: [68,67,67,66,66,65,65,64,64,62,61,61,62,62],
-        hemoglobin: flat14(13.6, 13.7), dietary_iron_cycle: flat14(20, 21), dietary_iron_suppressed: flat14(6, 7),
-        pill_potency: [99,99,99,98,98,98,98,97,97,97,97,96,96,96], sexual_oxytocin: flat14(3, 4),
-        caloric_balance: flat14(99, 101), protein_intake: flat14(1.3, 1.4), carbs_pct: flat14(52, 53),
-        fats_pct: flat14(27, 28), dietary_fiber: flat14(28, 30),
-        fluid_intake_female: flat14(2300, 2400), fluid_intake_male: flat14(2700, 2800),
-        sodium_intake: flat14(2650, 2720), potassium_intake: flat14(3950, 4100),
-        magnesium_intake: flat14(345, 355), iodine_intake: flat14(155, 160), vit_c_pct: flat14(94, 95)
-    };
-
-    const mDef = (id, name, unit, type, cat, thresholds, definition, sensor, countermeasures, diet, opts = {}) => ({
-        id, name, unit, type, cat, thresholds, definition, sensor, history: [], stale: false, countermeasures, diet, ...opts
-    });
-
-    const metrics = {
-        // DIET / SUSTENANCE
-        caloric_balance: mDef('caloric_balance', 'Daily Calories (% of Goal)', '% goal', 'bidirectional', 'DIET/SUSTENANCE', [75, 75, 90, 110, 125, 125],
-            'Compares logged food calories against today\'s total burn (resting + gym + spacewalk).',
-            '1. Scan NASA food pouches.\n2. Slide the 30-second meal portion bar.',
-            { low: 'Yellow (15-25% short): Eat a snack pouch. Red (>25% short): Eat an extra high-protein/carb meal now.', high: 'Trim snack surplus to match exercise.' },
-            { low: 'Add +350 to +500 kcal pouch.', high: 'Trim snack calories.' }),
-        protein_intake: mDef('protein_intake', 'Daily Protein (Body-Weight Scaled)', 'g/kg/d', 'bidirectional', 'DIET/SUSTENANCE', [0.8, 0.8, 1.2, 1.5, 2.0, 2.0],
-            'Tracks protein per kg of body mass. Rebuilds muscle; >2.0 g/kg pushes calcium into urine.',
-            '1. Calculated automatically from your logged meals.',
-            { low: 'Add high-protein entree or shake.', high: 'Protein >2.0 g/kg sheds bone calcium into kidneys.' },
-            { low: 'Aim for 1.2-1.5 g/kg/day.', high: 'Keep protein <= 1.5 g/kg/day and hydrate.' }),
-        carbs_pct: mDef('carbs_pct', 'Carbohydrates (% of Calories)', '% kcal', 'bidirectional', 'DIET/SUSTENANCE', [35, 35, 50, 55, 65, 70],
-            'Quick energy for brain focus and 8-hour moon/Mars walks.',
-            '1. Calculated automatically from food logs.',
-            { low: 'Red (<35%): Low blood sugar risk on EVA - take rapid carb gel.', high: 'Balance with protein and fats.' },
-            { low: 'Target 50-55% calories from carbs.', high: 'Shift calories to protein/fats.' }),
-        fats_pct: mDef('fats_pct', 'Healthy Fats (% of Calories)', '% kcal', 'bidirectional', 'DIET/SUSTENANCE', [15, 15, 25, 30, 38, 42],
-            'Supports steady hormones and Vitamin D3 absorption.',
-            '1. Calculated automatically from food logs.',
-            { low: 'Red (<15%): Blocks Vitamin D3 absorption.', high: 'Trim added oils/fats.' },
-            { low: 'Target 25-30% calories from healthy fats.', high: 'Reduce added oils.' }),
-        dietary_fiber: mDef('dietary_fiber', 'Daily Fiber', 'g/day', 'bidirectional', 'DIET/SUSTENANCE', [15, 15, 25, 35, 45, 50],
-            'Keeps digestion moving smoothly in low gravity.',
-            '1. Calculated automatically from food pouches.',
-            { low: 'Red (<15 g): Constipation risk - add fruit/grain pouch & water.', high: 'Drink extra water.' },
-            { low: 'Target 25-35 g/day + 300 mL water.', high: 'Drink extra water.' }),
-        fluid_intake: mDef('fluid_intake', 'Daily Water & Drinks', 'mL/day', 'mode_dependent_fluid', 'DIET/SUSTENANCE', [1500, 1500, 2100],
-            'Protects blood pressure and flushes kidneys to stop kidney stones.',
-            '1. Synced automatically from water dispenser and drink pouches.',
-            { low: 'Yellow: Early dehydration. Red (<1,500 mL): Drink 500 mL water + electrolytes now.' },
-            { low: 'Drink 500 mL water + electrolyte packet now.' }),
-        dietary_iron: mDef('dietary_iron', 'Daily Food Iron', 'mg/day', 'mode_dependent_iron', 'DIET/SUSTENANCE', [10, 10, 18, 45, 50, 60],
-            'Menstruating crew need >=18 mg/day. Men and suppressed crew must stay <=8 mg/day so extra iron does not stress organs in space.',
-            '1. Scan meal barcodes on galley screen.',
-            { low: 'Iron too low for active periods (<18 mg/d). Add iron-rich meal or pill.', high: 'Iron overload (>8 mg/d cap; >15 mg critical). Switch to low-iron meals now.' },
-            { low: 'Target >=18 mg/day iron + Vitamin C.', high: 'Keep dietary iron <= 8 mg/day.' }),
-        sodium_intake: mDef('sodium_intake', 'Daily Salt / Sodium (Eye & Kidney Defense)', 'mg/day', 'unidirectional_3tier', 'DIET/SUSTENANCE', [2999, 3800, 3801],
-            'Too much salt traps fluid in your head (eye pressure) and pushes calcium into urine (kidney stones).',
-            '1. Calculated automatically from logged NASA meal pouches.',
-            { high: 'Yellow (3,000-3,800): Head fluid rising. Red (>3,800): Eye & kidney stone threat - enforce low-salt meals.' },
-            { high: 'Keep daily salt < 3,000 mg/day and boost potassium.' }),
-        potassium_intake: mDef('potassium_intake', 'Daily Potassium', 'mg/day', 'bidirectional', 'DIET/SUSTENANCE', [2500, 2500, 3500, 4700, 5200, 6000],
-            'Keeps heart rhythm steady and helps guard against bone calcium loss.',
-            '1. Calculated automatically from fruit, meals, and drink logs.',
-            { low: 'Red (<2,500 mg): Heart rhythm risk - take potassium food or supplement.', high: 'Drink plenty of water.' },
-            { low: 'Target 3,500-4,700 mg/day potassium.', high: 'Pause extra potassium tablets.' }),
-        magnesium_intake: mDef('magnesium_intake', 'Daily Magnesium', 'mg/day', 'bidirectional', 'DIET/SUSTENANCE', [200, 200, 300, 400, 500, 600],
-            'Relaxes tight muscles (including period cramps) and supports bone strength.',
-            '1. Calculated automatically from daily meals & vitamins.',
-            { low: 'Red (<200 mg): Elevates period cramp & muscle pain - take magnesium supplement.', high: 'Check supplement dose.' },
-            { low: 'Target 300-400 mg/day magnesium.', high: 'Pause extra magnesium.' }),
-        iodine_intake: mDef('iodine_intake', 'Daily Iodine (Thyroid Defense)', 'ug/day', 'unidirectional_low', 'DIET/SUSTENANCE', [100, 100, 150],
-            'Protects your thyroid gland, especially on Mars where soil dust blocks iodine.',
-            '1. Logged from iodized water, meals, or daily multivitamin.',
-            { low: 'Red (<100 ug): Thyroid risk if Martian dust is present.' },
-            { low: 'Target 150 ug/day iodine.' }),
-        vit_c_pct: mDef('vit_c_pct', 'Vitamin C & B1 Freshness (Radiation)', '% target', 'unidirectional_low', 'DIET/SUSTENANCE', [50, 50, 80],
-            'Deep-space radiation breaks down Vit C and B1 in stored food over multi-year trips.',
-            '1. Scan food package radiation tag or log shielded vitamin pill.',
-            { low: 'Red (<50%): Switch immediately to shielded fresh vitamin stock.' },
-            { low: 'Take shielded Vitamin C (90+ mg) & B1 (1.2+ mg) pills.' }),
-
-        // GYNECOLOGICAL & BEHAVIORAL
-        pill_missed: mDef('pill_missed', 'Suppression Pill Check (Mode A)', 'missed days', 'unidirectional_3tier', 'GYN/CYCLE', [0, 2, 3],
-            'Tracks daily suppression pills to prevent surprise bleeding or cysts.',
-            '1. Log daily pill intake (0 = on schedule).',
-            { high: 'Yellow (1-2 missed): Take missed pill now. Red (>=3): Notify Flight Surgeon.' },
-            { high: 'Keep daily iron <= 8 mg/day.' }, { discrete: true }),
-        menstrual_flow: mDef('menstrual_flow', 'Period Flow Volume (Mode B)', 'changes/day', 'unidirectional_3tier', 'GYN/CYCLE', [3, 5, 6],
-            'Catches heavy bleeding early before it causes low iron or dizziness.',
-            '1. Log daily pad/cup changes (0 on non-period days).',
-            { high: 'Yellow (4-5/day): Drink more water & iron. Red (>5/day): Alert Medical Officer; pause heavy EVAs.' },
-            { high: 'Drink +500 mL water and eat >= 18 mg/day iron.' }, { discrete: true }),
-        cramping_pain: mDef('cramping_pain', 'Period Cramp Pain (Dysmenorrhea)', '/10 NRS', 'unidirectional_3tier', 'GYN/CYCLE', [3, 6, 7],
-            'Tracks cramp pain (0-10). Tight suit belts and Mars cold can worsen cramps.',
-            '1. Rate cramp pain 0-10 in daily check-in.',
-            { high: 'Yellow (4-6): Take oral pain relief & heat pack. Red (7-10): Pause spacewalks; notify Medical Officer.' },
-            { high: 'Warm fluids and 300-400 mg magnesium.' }, { discrete: true }),
-        ferritin: mDef('ferritin', 'Stored Body Iron (Ferritin)', 'ug/L', 'bidirectional', 'GYN/CYCLE', [20, 20, 30, 120, 150, 200],
-            'Shows backup iron stores so you do not run out of energy or overload organs.',
-            '1. Finger-prick blood drop onto hematology reader.',
-            { low: 'Red (<20 ug/L): Start clinical iron supplement immediately.', high: 'Stored iron too high - enforce <= 8 mg/day low-iron diet.' },
-            { low: 'Eat iron-rich meals with Vitamin C.', high: 'Keep dietary iron <= 8 mg/day.' }),
-        hemoglobin: mDef('hemoglobin', 'Blood Oxygen Carry (Hemoglobin)', 'g/dL', 'unidirectional_low', 'GYN/CYCLE', [11.0, 11.0, 12.0],
-            'Measures oxygen-carrying red blood cells; low levels cause fatigue and fainting.',
-            '1. Finger-prick drop on hemoglobin strip -> reader.',
-            { low: 'Red (<11.0 g/dL): Pause spacewalks immediately and notify Medical Officer.' },
-            { low: 'Boost bioavailable iron, folate, and B12.' }),
-        pill_potency: mDef('pill_potency', 'Medication Radiation Strength', '% potency', 'unidirectional_low', 'GYN/CYCLE', [80, 80, 90],
-            'Checks whether space radiation has weakened stored pills on long Moon/Mars trips.',
-            '1. Scan pill pack radiation tag.',
-            { low: 'Red (<80%): Switch immediately to shielded backup stock.' },
-            { low: 'None' }),
-        sexual_oxytocin: mDef('sexual_oxytocin', 'Pelvic Comfort & Relaxation (Oxytocin)', '1-5 scale', 'unidirectional_low', 'GYN/CYCLE', [1, 1, 2],
-            'Optional 1-5 wellness rating tracking natural oxytocin muscle relaxation and lower cramp stress.',
-            '1. Optional private 1-5 check-in score.',
-            { low: 'Try heat therapy, gentle stretching, or quiet rest to ease pelvic tension.' },
-            { low: 'Pair rest with 300-400 mg magnesium and warm water.' }, { discrete: true }),
-
-        // CORE AEROSPACE (INCLUDING COMPLETE BONE & FLUID METRICS)
-        onsd: mDef('onsd', 'Eye Nerve Pressure (ONSD)', 'mm', 'bidirectional', 'NEURO/OCULAR', [4.0, 4.5, 5.0, 6.2, 6.4, 6.8],
-            'Fluid floats up into your head in zero gravity and presses on the eye nerve (SANS).',
-            '1. Put gel on closed eyelid.\n2. Rest ultrasound probe gently until green lock.',
-            { low: 'Check probe calibration and hydrate.', high: 'Use Leg Vacuum Chamber (LBNP) at -25 to -45 mmHg for 45 min/day.' },
-            { low: 'Drink 500 mL water.', high: 'Keep daily salt < 3,000 mg/day.' },
-            { envThresholds: { '0.38g': [4.5, 4.7, 4.8, 6.0, 6.2, 6.7] } }),
-        iop: mDef('iop', 'Eyeball Fluid Pressure (IOP)', 'mmHg', 'bidirectional', 'NEURO/OCULAR', [8, 10, 12, 24, 29, 29],
-            'Measures fluid pressure inside the eyeball (12-24 mmHg normal in 0g; 12-20 on Mars).',
-            '1. Gently touch handheld tonometer tip to eyelid/eye per prompt.',
-            { low: 'Red (<8 mmHg): Low eyeball pressure alert - notify Flight Surgeon.', high: 'Red (>=30 mmHg): Acute eye pressure spike - start LBNP & alert surgeon.' },
-            { low: 'Hydrate.', high: 'Keep daily salt < 3,000 mg/day.' },
-            { envThresholds: { '0.38g': [8, 10, 12, 20, 23, 28] } }),
-        co2: mDef('co2', 'Cabin Air CO2 Level', 'mmHg', 'bidirectional', 'CARDIO/AIR', [1.0, 1.3, 1.5, 3.0, 3.5, 5.0],
-            'Checks if stale exhaled air is building up in the cabin, causing headaches and brain fog.',
-            '1. Read CO2 display on cabin wall air monitor.',
-            { low: 'Check cabin pressure seals and sensor calibration.', high: 'Run backup air scrubbers. Above 5.0 mmHg, don portable oxygen masks.' },
-            { low: 'None', high: 'None' }),
-        blood_co2: mDef('blood_co2', 'Blood Carbon Dioxide (Blood pCO2)', 'mmHg', 'bidirectional', 'CARDIO/AIR', [30, 33, 35, 42, 49, 55],
-            'Measures CO2 dissolved in blood (35-42 mmHg in 0g, 38-43 on Mars).',
-            '1. Finger-stick capillary strip -> blood gas analyzer.',
-            { low: 'Guide calm slow breathing (6 breaths/min) to restore CO2 balance.', high: 'Activate cabin CO2 scrubbers right away and check airflow.' },
-            { low: 'None', high: 'None' },
-            { envThresholds: { '0.38g': [30, 34, 38, 43, 48, 55] } }),
-        ijv: mDef('ijv', 'Neck Vein Blood Flow (IJV)', 'cm/s', 'bidirectional', 'CARDIO/AIR', [5, 7, 10, 25, 30, 40],
-            'Checks blood drainage in the neck vein; sluggish flow (<7 cm/s) risks blood clots.',
-            '1. Gel on side of neck -> place flat ultrasound probe over jugular vein.',
-            { low: 'Run immediate ultrasound compression check for left neck vein clots.', high: 'Use Leg Vacuum Chamber (LBNP) to ease head congestion.' },
-            { low: 'None', high: 'None' }),
-        sleep: mDef('sleep', 'Nightly Sleep Hours', 'hours', 'bidirectional', 'MENTAL/SLEEP', [4.0, 4.5, 6.0, 7.5, 9.0, 9.5],
-            'Watch telemetry tracking total sleep over 24 hours.',
-            '1. Wear sleep watch while resting; syncs on wake.',
-            { low: 'Schedule an 8-hour recovery sleep block and use autopilot.', high: 'Check cabin CO2 and evaluate for fatigue.' },
-            { low: 'None', high: 'None' }),
-        hrv: mDef('hrv', 'Heart Stress Recovery (HRV)', 'ms', 'bidirectional', 'MENTAL/SLEEP', [10, 12, 15, 80, 90, 100],
-            'Measures heart-rate recovery between beats. Low values mean heavy exhaustion or stress.',
-            '1. Wear chest strap or biometric watch; rest 5 min.',
-            { low: 'Heavy fatigue (<10 ms). Skip hard workouts today and rest.', high: 'Strong vagal rebound. Stand up slowly.' },
-            { low: 'None', high: 'None' }),
-        pvt: mDef('pvt', 'Reaction Focus Test (PVT)', '%', 'unidirectional', 'MENTAL/SLEEP', [10, 15, 20],
-            'Tracks slow reactions (>500 ms) during a quick tap test to catch hidden fatigue.',
-            '1. Click Run Test under Daily Check-In Tasks and tap on the amber cue.',
-            { high: 'Switch piloting to autopilot and take an 8-hour sleep block.' },
-            { high: 'Use 100 mg caffeine only within active work shift.' }),
-        dust: mDef('dust', 'Moon Dust Lung Check (8-OHdG)', 'ng/mg', 'unidirectional', 'CARDIO/AIR', [5.0, 8.0, 12.0],
-            'Checks urine for lung stress from sharp Moon dust.',
-            '1. Urine pouch -> habitat lab analyzer -> wait 5 min.',
-            { high: 'Run airlock static dust cleaning and HEPA vacuums.' },
-            { high: 'Take antioxidant vitamins C, E, and thiol support.' }),
-        temp: mDef('temp', 'Spacesuit Body Temperature', '°C', 'bidirectional', 'CARDIO/AIR', [36.0, 36.5, 37.0, 37.8, 38.3, 38.9],
-            'Monitors core body heat inside your cooling suit during moonwalks.',
-            '1. Plug cooling garment umbilical into suit port and read wrist display.',
-            { low: 'Increase suit heating and lower cooling flow.', high: 'Stop work, maximize cooling, and abort walk at >=39.0 °C.' },
-            { low: 'Drink warmed fluids.', high: 'Drink chilled water right away.' }),
-        rad: mDef('rad', 'Surface Radiation Dose', 'mGy/day', 'unidirectional', 'NEURO/OCULAR', [1.8, 2.4, 250.0],
-            'Tracks daily ionizing radiation and catches sudden solar flare spikes.',
-            '1. Clip radiation badge to outer suit pocket facing out.',
-            { high: 'Solar flare alert: move crew into water-walled storm shelter right away.' },
-            { high: 'Take approved antioxidant radiation-shield supplements.' }),
-        spine: mDef('spine', 'Spine Stretch Check', 'in/EVA', 'unidirectional', 'BONE/HYDRATION', [1.5, 2.0, 3.0],
-            'In 1/6th Moon gravity, your spine stretches taller, which can pinch nerves.',
-            '1. Stand against habitat height bar after taking off your suit.',
-            { high: 'Avoid heavy bending/lifting and wear compression harness.' },
-            { high: 'None' }),
-        emuco2: mDef('emuco2', 'Spacesuit Helmet CO2', 'mmHg', 'bidirectional', 'CARDIO/AIR', [1.0, 1.5, 2.0, 4.0, 5.9, 7.5],
-            'Makes sure suit scrubbers clear exhaled CO2 inside your helmet.',
-            '1. Read CO2 number on suit chest display.',
-            { low: 'Check suit CO2 sensor calibration.', high: 'CO2 building up inside helmet. Abort EVA immediately and purge suit.' },
-            { low: 'None', high: 'None' }),
-        ortho: mDef('ortho', 'Standing Dizziness Check', '%', 'unidirectional_low', 'CARDIO/AIR', [60, 70, 80],
-            'Tests blood pressure stability when standing up in low gravity.',
-            '1. Lie flat 5 min, stand up, record arm-cuff stability score.',
-            { low: 'Fainting risk. Wear compression leggings and stand slowly.' },
-            { low: 'Drink an Oral Rehydration Salt (ORS) electrolyte packet.' }),
-        osmolality: mDef('osmolality', 'Blood Hydration Balance (Osmolality)', 'mOsm/kg', 'bidirectional', 'BONE/HYDRATION', [275, 280, 284, 298, 302, 310],
-            'Checks blood concentration for dehydration (>302) or water overload (<275).',
-            '1. Touch finger-prick blood drop to strip -> blood reader.',
-            { low: 'Cut back plain water (<275 water intoxication risk) and take salt tablets.', high: 'Dehydration alert (>310 critical). Start ORS fluids.' },
-            { low: 'Restrict plain water; take sodium-chloride tablets.', high: 'Drink ORS packet with 500 mL water.' }),
-        usg: mDef('usg', 'Urine Hydration Density (USG)', 'ratio', 'bidirectional', 'BONE/HYDRATION', [1.005, 1.010, 1.015, 1.025, 1.028, 1.030],
-            'Compares urine density to pure water (1.015-1.025 normal; >1.030 severe dehydration).',
-            '1. Dip urine test strip into catch cup -> optical reader.',
-            { low: 'Urine too diluted (<1.005). Cut back plain water.', high: 'Severe dehydration (>1.030). Drink 500 mL ORS water bolus immediately.' },
-            { low: 'Take electrolyte tablets.', high: 'Drink 500 mL water + ORS packet.' }),
-        calcium: mDef('calcium', 'Urine Calcium Loss (Kidney Risk)', 'mg/24h', 'bidirectional', 'BONE/HYDRATION', [100, 150, 250, 400, 450, 500],
-            'Measures calcium leaving bones in urine each day (250-400 normal in 0g; 200-350 on Mars). High levels cause kidney stones.',
-            '1. Collect 24-hour urine -> inject 10 mL into chemistry analyzer.',
-            { low: 'Check dietary calcium absorption.', high: 'Raise ARED lifting by 15% and keep daily salt < 3,000 mg/day.' },
-            { low: 'Increase dietary calcium.', high: 'Take weekly Alendronate, daily potassium citrate, Vit D3, and keep protein <= 1.5 g/kg.' },
-            { envThresholds: { '0.38g': [80, 131, 200, 350, 400, 480] } }),
-        perchlorate: mDef('perchlorate', 'Mars Soil Toxin Check', 'ug/L', 'unidirectional_l3', 'CARDIO/AIR', [1.0, 5.0, 10.0, 25.0],
-            'Checks urine for Martian soil chemicals (>5.0 ug/L) that block thyroid iodine.',
-            '1. Post-EVA urine vial -> mass spectrometer Soil Toxin test.',
-            { low: 'Trace levels noted. Keep running airlock dust cleaning.', high: 'Run full airlock static dust cleaning & HEPA vacuums; raise iodine.' },
-            { low: 'None', high: 'Saline nasal rinse, Iodine >=150 ug/day, or approved KI tablet.' }),
-        bmd: mDef('bmd', 'Monthly Bone Strength (BMD)', '%/mo', 'unidirectional_negative', 'BONE/HYDRATION', [-0.5, -1.0, -1.5],
-            'Tracks monthly bone loss (0 to -0.5% normal in 0g; 0 to -0.4% on Mars).',
-            '1. Place forearm/heel in portable bone scanner for 60 seconds.',
-            { high: 'Bones thinning faster than target. Raise gym lifting resistance by 15%.' },
-            { high: 'Weekly Alendronate with daily potassium citrate and Vitamin D3.' },
-            { envThresholds: { '0.38g': [-0.4, -0.7, -1.0] } })
-    };
-
-    // =========================================================================
-    // STATE, PROFILE & DYNAMIC TARGET ENGINE
-    // =========================================================================
-
-    const defaultProfile = {
-        astronautId: 'ASTRO-084', name: 'Cmdr. Elena Vance', age: 34,
-        role: 'Payload & Medical Officer', heightCm: 168, weightKg: 62,
-        bodyFatPct: 21.5, bmdTScore: -0.3, sexMode: 'FEMALE_CYCLE',
-        cycleLengthDays: 28, cycleDay: 1, flowBaseline: 'Moderate',
-        suppressionRegimen: 'Continuous Combined Oral Pill',
-        crampingBaseline: 'None / Mild (0-3 NRS)',
-        dietaryPreference: 'Standard Space Ration', foodAllergies: 'None',
-        medHistory: { anemia: false, osteopenia: false, kidneyStones: false, sans: false, pcosEndo: false, clottingFactor: false, nsaidAllergy: false, iodineAllergy: false }
-    };
-
-    const structuredCloneSafe = (o) => JSON.parse(JSON.stringify(o));
-    const escapeHTML = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    const mergeProfile = (base, inc) => {
-        const m = { ...base, ...inc, medHistory: { ...base.medHistory, ...(inc && inc.medHistory ? inc.medHistory : {}) } };
-        if (!VALID_SEX_MODES.includes(m.sexMode)) m.sexMode = base.sexMode;
-        return m;
-    };
-    const loadStoredProfile = () => {
-        try { const r = localStorage.getItem(PROFILE_STORAGE_KEY); return r ? mergeProfile(defaultProfile, JSON.parse(r)) : structuredCloneSafe(defaultProfile); }
-        catch { return structuredCloneSafe(defaultProfile); }
-    };
-    const saveStoredProfile = (p) => { try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(p)); } catch {} };
-    const hasSavedProfile = () => { try { return Boolean(localStorage.getItem(PROFILE_STORAGE_KEY)); } catch { return false; } };
-
-    let crewProfile = loadStoredProfile();
-    let currentEnv = '0g_station';
-    let currentGender = crewProfile.sexMode;
-    let currentFilter = 'ALL';
-    let selectedMetricId = 'onsd';
-    let currentTimeframe = '14D';
-    let chartInstance = null;
-    let streak = 0;
-    let evaFreezeMode = false;
-    const armedInterventions = {};
-    const executedInterventions = {};
-    let exertionState = { aredKg: 0, treadmillKm: 0, evaHours: 0, evaKcalOverride: null };
-    let pvtRound = 0, pvtLapses = 0, pvtStartTime = 0, pvtTimeout = null, pvtState = 'idle';
-    let routineResetTimeout = null, rewardHideTimeout = null;
-
-    function computeDynamicTargets() {
-        const w = crewProfile.weightKg || 62;
-        const hM = (crewProfile.heightCm || 168) / 100;
-        const bf = Math.min(48, Math.max(5, crewProfile.bodyFatPct || 21.5));
-        const bmi = +(w / (hM * hM)).toFixed(1);
-        const lbm = w * (1 - bf / 100);
-        const tBaseKcal = Math.round((370 + 21.6 * lbm) * 1.512);
-        const eExercise = Math.round((exertionState.aredKg * 0.025) + (exertionState.treadmillKm * 35));
-        const eEva = exertionState.evaKcalOverride !== null ? Math.round(exertionState.evaKcalOverride) : Math.round(exertionState.evaHours * 300);
-        const tActiveKcal = tBaseKcal + eExercise + eEva;
-        const pFactor = (exertionState.aredKg > 0 || exertionState.evaHours > 0) ? 1.4 : 1.3;
-        const proteinTargetG = +(w * pFactor).toFixed(1);
-        const carbsTargetG = Math.round((tActiveKcal * 0.525) / 4);
-        const fatTargetG = Math.round((tActiveKcal * 0.275) / 9);
-        const baseFluidMl = crewProfile.sexMode === 'MALE' ? Math.max(2500, Math.round(w * 35)) : Math.max(2100, Math.round(w * 34));
-        const fluidTargetMl = baseFluidMl + (crewProfile.medHistory.kidneyStones ? 500 : 0);
-        return { bmi, tBaseKcal, eExercise, eEva, tActiveKcal, proteinTargetG, carbsTargetG, fatTargetG, fluidTargetMl, sodiumCapMg: 3000 };
-    }
-
-    function updateDynamicTargetsUI() {
-        const t = computeDynamicTargets();
-        document.getElementById('t-active-badge').innerText = `${t.tActiveKcal.toLocaleString()} kcal/d`;
-        document.getElementById('t-active-breakdown').innerText = `Resting Goal: ${t.tBaseKcal.toLocaleString()} + Exercise: ${t.eExercise} + Spacewalk: ${t.eEva} = Daily Target: ${t.tActiveKcal.toLocaleString()} kcal`;
-        document.getElementById('calorie-target').innerText = `${t.tActiveKcal.toLocaleString()} kcal/d`;
-        document.getElementById('macro-targets').innerText = `${t.proteinTargetG}g P · ${t.carbsTargetG}g C · ${t.fatTargetG}g F`;
-        document.getElementById('hydration-target').innerText = `${t.fluidTargetMl.toLocaleString()} mL${crewProfile.medHistory.kidneyStones ? ' (+500 renal)' : ''}`;
-        document.getElementById('sodium-iron-target').innerText = `Salt <${t.sodiumCapMg.toLocaleString()} mg · ${currentGender === 'FEMALE_CYCLE' ? 'Iron >=18 mg' : 'Iron <=8 mg'}`;
-    }
-
-    // =========================================================================
-    // PROFILE SETUP MODAL
-    // =========================================================================
-
-    function syncSetupModalGynVisibility() {
-        const mode = document.getElementById('prof-sex-mode').value;
-        document.getElementById('prof-gyn-section').classList.toggle('hidden', mode === 'MALE');
-        document.getElementById('hist-pcos-wrap').classList.toggle('hidden', mode === 'MALE');
-        document.getElementById('prof-cycle-fields').classList.toggle('hidden', mode !== 'FEMALE_CYCLE');
-        document.getElementById('prof-suppression-fields').classList.toggle('hidden', mode !== 'FEMALE_SUPPRESSED');
-    }
-
-    function populateSetupForm(p) {
-        document.getElementById('prof-id').value = p.astronautId || 'ASTRO-084';
-        document.getElementById('prof-name').value = p.name || '';
-        document.getElementById('prof-age').value = p.age || 34;
-        document.getElementById('prof-role').value = p.role || 'Payload & Medical Officer';
-        document.getElementById('prof-height').value = p.heightCm || 168;
-        document.getElementById('prof-weight').value = p.weightKg || 62;
-        document.getElementById('prof-bodyfat').value = p.bodyFatPct || 21.5;
-        document.getElementById('prof-bmd-tscore').value = p.bmdTScore ?? -0.3;
-        document.getElementById('prof-sex-mode').value = p.sexMode || 'FEMALE_CYCLE';
-        document.getElementById('prof-cycle-length').value = p.cycleLengthDays || 28;
-        document.getElementById('prof-cycle-day').value = p.cycleDay || 1;
-        document.getElementById('prof-flow-baseline').value = p.flowBaseline || 'Moderate';
-        document.getElementById('prof-suppression-type').value = p.suppressionRegimen || 'Continuous Combined Oral Pill';
-        document.getElementById('prof-cramp-baseline').value = p.crampingBaseline || 'None / Mild (0-3 NRS)';
-        document.getElementById('prof-diet').value = p.dietaryPreference || 'Standard Space Ration';
-        document.getElementById('prof-allergies').value = p.foodAllergies || 'None';
-        document.getElementById('hist-anemia').checked = Boolean(p.medHistory.anemia);
-        document.getElementById('hist-osteopenia').checked = Boolean(p.medHistory.osteopenia);
-        document.getElementById('hist-kidney').checked = Boolean(p.medHistory.kidneyStones);
-        document.getElementById('hist-sans').checked = Boolean(p.medHistory.sans);
-        document.getElementById('hist-pcos').checked = Boolean(p.medHistory.pcosEndo);
-        document.getElementById('hist-clotting').checked = Boolean(p.medHistory.clottingFactor);
-        document.getElementById('hist-nsaid-allergy').checked = Boolean(p.medHistory.nsaidAllergy);
-        document.getElementById('hist-iodine-allergy').checked = Boolean(p.medHistory.iodineAllergy);
-        syncSetupModalGynVisibility();
-    }
-
-    function readProfileFromForm() {
-        const sexMode = document.getElementById('prof-sex-mode').value;
-        return {
-            astronautId: document.getElementById('prof-id').value.trim() || 'ASTRO-084',
-            name: document.getElementById('prof-name').value.trim() || 'Crew Member',
-            age: Math.max(18, parseInt(document.getElementById('prof-age').value, 10) || 34),
-            role: document.getElementById('prof-role').value,
-            heightCm: Math.max(120, parseFloat(document.getElementById('prof-height').value) || 168),
-            weightKg: Math.max(35, parseFloat(document.getElementById('prof-weight').value) || 62),
-            bodyFatPct: Math.min(50, Math.max(5, parseFloat(document.getElementById('prof-bodyfat').value) || 21.5)),
-            bmdTScore: parseFloat(document.getElementById('prof-bmd-tscore').value) || 0,
-            sexMode,
-            cycleLengthDays: Math.max(18, parseInt(document.getElementById('prof-cycle-length').value, 10) || 28),
-            cycleDay: Math.max(1, parseInt(document.getElementById('prof-cycle-day').value, 10) || 1),
-            flowBaseline: document.getElementById('prof-flow-baseline').value,
-            suppressionRegimen: document.getElementById('prof-suppression-type').value,
-            crampingBaseline: document.getElementById('prof-cramp-baseline').value,
-            dietaryPreference: document.getElementById('prof-diet').value,
-            foodAllergies: document.getElementById('prof-allergies').value.trim() || 'None',
-            medHistory: {
-                anemia: document.getElementById('hist-anemia').checked,
-                osteopenia: document.getElementById('hist-osteopenia').checked,
-                kidneyStones: document.getElementById('hist-kidney').checked,
-                sans: document.getElementById('hist-sans').checked,
-                pcosEndo: sexMode === 'MALE' ? false : document.getElementById('hist-pcos').checked,
-                clottingFactor: document.getElementById('hist-clotting').checked,
-                nsaidAllergy: document.getElementById('hist-nsaid-allergy').checked,
-                iodineAllergy: document.getElementById('hist-iodine-allergy').checked
-            }
-        };
-    }
-
-    const openProfileModal = () => { populateSetupForm(crewProfile); document.getElementById('profile-setup-modal').classList.remove('hidden'); };
-    const closeProfileModal = () => { document.getElementById('profile-setup-modal').classList.add('hidden'); };
-
-    function applyProfileToApp(profile, persist = true) {
-        crewProfile = mergeProfile(defaultProfile, profile);
-        currentGender = crewProfile.sexMode;
-        document.getElementById('gender-selector').value = currentGender;
-        if (persist) saveStoredProfile(crewProfile);
-        updateGenderProfileUI();
-        updateDynamicTargetsUI();
-        renderProfileSummaryUI();
-        renderTelemetryList();
-    }
-
-    function renderProfileSummaryUI() {
-        const t = computeDynamicTargets();
-        document.getElementById('header-profile-summary').innerText = `${crewProfile.astronautId} · ${crewProfile.name} (${crewProfile.age}y)`;
-        const flags = [];
-        if (crewProfile.medHistory.anemia) flags.push('Anemia History');
-        if (crewProfile.medHistory.osteopenia || crewProfile.bmdTScore <= -1.0) flags.push(`Low BMD (T:${crewProfile.bmdTScore})`);
-        if (crewProfile.medHistory.kidneyStones) flags.push('Kidney Stone Risk');
-        if (crewProfile.medHistory.sans) flags.push('SANS Head-Fluid Sensitivity');
-        if (crewProfile.sexMode !== 'MALE' && crewProfile.medHistory.pcosEndo) flags.push('PCOS / Endometriosis');
-        if (crewProfile.medHistory.clottingFactor) flags.push('Factor V Leiden / Clotting Risk');
-        if (crewProfile.medHistory.nsaidAllergy) flags.push('NSAID Sensitivity');
-        if (crewProfile.medHistory.iodineAllergy) flags.push('Iodine Sensitivity');
-
-        const medFlagsText = flags.length > 0 ? flags.join(', ') : 'No chronic risk flags on file';
-        let cycleLine = '';
-        if (crewProfile.sexMode === 'FEMALE_CYCLE') {
-            cycleLine = `<div><strong class="text-slate-200">Cycle Baseline:</strong> Day ${escapeHTML(crewProfile.cycleDay)}/${escapeHTML(crewProfile.cycleLengthDays)} · ${escapeHTML(crewProfile.flowBaseline)} flow · Cramping: ${escapeHTML(crewProfile.crampingBaseline)}</div>`;
-        } else if (crewProfile.sexMode === 'FEMALE_SUPPRESSED') {
-            cycleLine = `<div><strong class="text-slate-200">Suppression Regimen:</strong> ${escapeHTML(crewProfile.suppressionRegimen)} · Cramping: ${escapeHTML(crewProfile.crampingBaseline)}</div>`;
-        }
-        document.getElementById('crew-profile-summary-card').innerHTML = `
-            <div><strong class="text-slate-200">${escapeHTML(crewProfile.astronautId)} · ${escapeHTML(crewProfile.name)}</strong> · ${escapeHTML(crewProfile.role)} (<span class="font-mono tabular-nums">${escapeHTML(crewProfile.age)}y, ${escapeHTML(crewProfile.heightCm)}cm, ${escapeHTML(crewProfile.weightKg)}kg, BMI ${t.bmi}, BF ${escapeHTML(crewProfile.bodyFatPct)}%</span>)</div>
-            ${cycleLine}
-            <div><strong class="text-slate-200">Diet &amp; Allergies:</strong> ${escapeHTML(crewProfile.dietaryPreference)} · Allergies: ${escapeHTML(crewProfile.foodAllergies)}</div>
-            <div><strong class="text-slate-200">Medical Flags:</strong> <span class="${flags.length > 0 ? 'text-amber-300' : 'text-emerald-300'}">${escapeHTML(medFlagsText)}</span></div>
-        `;
-    }
-
-    // =========================================================================
-    // TRIAGE & FORECASTING ENGINE
-    // =========================================================================
-
-    const getActiveMetricIds = () => [...(envMetricsMap[currentEnv] || []), ...sustenanceMetricsList, ...(gynMetricsByProfile[currentGender] || [])];
-    const getEnvThresholds = (m) => (m.envThresholds && m.envThresholds[currentEnv]) ? m.envThresholds[currentEnv] : m.thresholds;
-
-    function evaluateTriageTier(value, metric) {
-        if (metric.type === 'mode_dependent_iron') {
-            if (currentGender === 'FEMALE_CYCLE') return value >= 18 ? { tier: 'GREEN', direction: 'nominal' } : (value >= 10 ? { tier: 'YELLOW', direction: 'low' } : { tier: 'RED', direction: 'low' });
-            return value <= 8 ? { tier: 'GREEN', direction: 'nominal' } : (value <= 15 ? { tier: 'YELLOW', direction: 'high' } : { tier: 'RED', direction: 'high' });
-        }
-        if (metric.type === 'mode_dependent_fluid') {
-            const minGreen = currentGender === 'MALE' ? 2500 : 2100;
-            return value >= minGreen ? { tier: 'GREEN', direction: 'nominal' } : (value >= 1500 ? { tier: 'YELLOW', direction: 'low' } : { tier: 'RED', direction: 'low' });
-        }
-        const t = getEnvThresholds(metric);
-        if (metric.type === 'bidirectional') {
-            if (value < t[0]) return { tier: 'RED', direction: 'low' };
-            if (value < t[2]) return { tier: 'YELLOW', direction: 'low' };
-            if (value <= t[3]) return { tier: 'GREEN', direction: 'nominal' };
-            if (value <= t[5]) return { tier: 'YELLOW', direction: 'high' };
-            return { tier: 'RED', direction: 'high' };
-        }
-        if (metric.type === 'unidirectional_l3') {
-            if (value < t[0]) return { tier: 'YELLOW', direction: 'low' };
-            if (value <= t[1]) return { tier: 'GREEN', direction: 'nominal' };
-            if (value <= t[3]) return { tier: 'YELLOW', direction: 'high' };
-            return { tier: 'RED', direction: 'high' };
-        }
-        if (metric.type === 'unidirectional_low') return value < t[0] ? { tier: 'RED', direction: 'low' } : (value < t[2] ? { tier: 'YELLOW', direction: 'low' } : { tier: 'GREEN', direction: 'nominal' });
-        if (metric.type === 'unidirectional_negative') return value >= t[0] ? { tier: 'GREEN', direction: 'nominal' } : (value >= t[2] ? { tier: 'YELLOW', direction: 'high' } : { tier: 'RED', direction: 'high' });
-        if (metric.type === 'unidirectional_3tier') return value <= t[0] ? { tier: 'GREEN', direction: 'nominal' } : (value < t[2] ? { tier: 'YELLOW', direction: 'high' } : { tier: 'RED', direction: 'high' });
-        return value <= t[0] ? { tier: 'GREEN', direction: 'nominal' } : (value <= t[2] ? { tier: 'YELLOW', direction: 'high' } : { tier: 'RED', direction: 'high' });
-    }
-
-    function getNominalBounds(metric) {
-        if (metric.type === 'mode_dependent_iron') return currentGender === 'FEMALE_CYCLE' ? [18, 45] : [0, 8];
-        if (metric.type === 'mode_dependent_fluid') return currentGender === 'MALE' ? [2500, 4000] : [2100, 3500];
-        const t = getEnvThresholds(metric);
-        if (metric.type === 'bidirectional') return [t[2], t[3]];
-        if (metric.type === 'unidirectional_l3') return [t[0], t[1]];
-        if (metric.type === 'unidirectional_low') return [t[2], 100];
-        if (metric.type === 'unidirectional_negative') return [t[0], 0];
-        return [0, t[0]];
-    }
-
-    function getDriftDirection(m) {
-        if (m.stale || m.history.length < 3) return null;
-        const [v1, v2, v3] = m.history.slice(-3);
-        return v1 < v2 && v2 < v3 ? 'up' : (v1 > v2 && v2 > v3 ? 'down' : null);
-    }
-
-    function compute7DayForecast(m) {
-        if (m.history.length < 3) return { insufficientBaseline: true, slope: 0, projected: [], breachDay: null, breachBoundary: null, breachTier: null, currentVal: m.history[m.history.length - 1] ?? null };
-        const [v1, , v3] = m.history.slice(-3);
-        const slope = (v3 - v1) / 2;
-        const curr = evaluateTriageTier(v3, m);
-        const [nomMin, nomMax] = getNominalBounds(m);
-        const projected = Array.from({ length: 7 }, (_, i) => v3 + slope * (i + 1));
-        let breachDay = null, breachBoundary = null, breachTier = null;
-        for (let i = 0; i < projected.length; i++) {
-            const pEval = evaluateTriageTier(projected[i], m);
-            if ((curr.tier === 'GREEN' && pEval.tier !== 'GREEN') || (curr.tier === 'YELLOW' && pEval.tier === 'RED')) {
-                breachDay = i + 1;
-                breachBoundary = pEval.direction === 'high' ? nomMax : nomMin;
-                breachTier = pEval.tier;
-                break;
-            }
-        }
-        return { insufficientBaseline: false, slope, projected, breachDay, breachBoundary, breachTier, currentVal: v3 };
-    }
-
-    function generate30DBaseline(m) {
-        const base = m.history[0];
-        return Array.from({ length: 16 }, () => {
-            if (m.discrete) return Math.max(0, Math.round(base + (Math.random() < 0.2 ? 1 : 0)));
-            const val = base + (Math.random() - 0.5) * (Math.abs(base) * 0.05 || 0.002);
-            return m.type === 'unidirectional_negative' ? val : Math.max(0, val);
-        });
-    }
-
-    const isAutonomousMode = () => currentEnv === '0g_transit' || currentEnv === '0.38g';
-    const formatValue = (val, m) => (m.id === 'usg' ? val.toFixed(3) : val.toFixed(1));
-
-    // =========================================================================
-    // UI RENDERING
-    // =========================================================================
-
-    function getDualCodedBadgeHTML(tier, isStale = false, isUnlogged = false) {
-        if (isStale) return '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800 text-slate-200 border border-slate-600"><svg width="14" height="14" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" stroke-dasharray="3 3"/><path d="M12 7v5l3 2" stroke-linecap="round"/></svg><span>DATA STALE</span></span>';
-        if (isUnlogged) return '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-900 text-slate-300 border border-slate-700"><svg width="14" height="14" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Awaiting Day 1 Log</span></span>';
-        if (tier === 'RED') return '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-600 text-white border border-red-400"><svg width="14" height="14" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><polygon points="7.86,2 16.14,2 22,7.86 22,16.14 16.14,22 7.86,22 2,16.14 2,7.86"/></svg><span>Warning</span></span>';
-        if (tier === 'YELLOW') return '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500 text-slate-950 border border-amber-300"><svg width="14" height="14" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L1 21h22L12 2z"/></svg><span>Caution</span></span>';
-        return '<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/90 text-emerald-300 border border-emerald-700"><svg width="14" height="14" class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Nominal</span></span>';
-    }
-
-    function getSvgForCategory(cat) {
-        const map = {
-            'NEURO/OCULAR': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><path d="M30 36 Q75 12 120 36 Q75 60 30 36Z" fill="none" stroke="#38bdf8" stroke-width="1.5"/><circle cx="75" cy="36" r="10" fill="none" stroke="#38bdf8" stroke-width="1.5"/><rect x="152" y="27" width="44" height="18" rx="3" fill="none" stroke="#10b981" stroke-width="1.5"/><line x1="120" y1="36" x2="152" y2="36" stroke="#10b981" stroke-width="2"/><text x="16" y="14" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">EYELID</text><text x="152" y="20" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">PROBE</text></svg>',
-            'CARDIO/AIR': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><rect x="18" y="18" width="46" height="36" rx="4" fill="none" stroke="#38bdf8" stroke-width="1.5"/><circle cx="41" cy="36" r="7" fill="none" stroke="#10b981" stroke-width="1.5"/><polyline points="82,36 108,36 118,16 130,56 144,12 156,48 168,36 240,36" fill="none" stroke="#38bdf8" stroke-width="1.5"/><text x="18" y="12" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">NECK / SUIT</text><text x="176" y="22" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">FLOW TRACE</text></svg>',
-            'BONE/HYDRATION': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><rect x="20" y="24" width="90" height="24" rx="4" fill="none" stroke="#38bdf8" stroke-width="1.5"/><circle cx="90" cy="36" r="5" fill="#10b981"/><line x1="110" y1="36" x2="148" y2="36" stroke="#64748b" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="150" y="20" width="88" height="32" rx="4" fill="none" stroke="#10b981" stroke-width="1.5"/><text x="20" y="16" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">URINE / BLOOD / SCAN</text><text x="156" y="40" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">READER SLOT</text></svg>',
-            'DIET/SUSTENANCE': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><rect x="18" y="18" width="64" height="36" rx="4" fill="none" stroke="#38bdf8" stroke-width="1.5"/><line x1="28" y1="28" x2="28" y2="44" stroke="#94a3b8" stroke-width="2"/><line x1="34" y1="28" x2="34" y2="44" stroke="#94a3b8" stroke-width="1"/><line x1="40" y1="28" x2="40" y2="44" stroke="#94a3b8" stroke-width="2"/><line x1="82" y1="36" x2="122" y2="36" stroke="#10b981" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="124" y="20" width="116" height="32" rx="4" fill="none" stroke="#10b981" stroke-width="1.5"/><text x="18" y="12" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">RFID POUCH</text><text x="132" y="39" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">CALORIE SCALER</text></svg>',
-            'GYN/CYCLE': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><rect x="18" y="20" width="86" height="32" rx="4" fill="none" stroke="#38bdf8" stroke-width="1.5"/><circle cx="42" cy="36" r="6" fill="#10b981"/><line x1="104" y1="36" x2="140" y2="36" stroke="#64748b" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="142" y="20" width="98" height="32" rx="4" fill="none" stroke="#10b981" stroke-width="1.5"/><text x="18" y="13" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">30s CHECK-IN</text><text x="150" y="40" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">BLOOD READER</text></svg>',
-            'MENTAL/SLEEP': '<svg width="260" height="72" viewBox="0 0 260 72" class="w-[260px] h-[72px] bg-[#0e1420] border border-slate-800 rounded"><circle cx="52" cy="36" r="18" fill="none" stroke="#38bdf8" stroke-width="1.5"/><line x1="52" y1="36" x2="52" y2="23" stroke="#38bdf8" stroke-width="1.5"/><line x1="52" y1="36" x2="63" y2="36" stroke="#10b981" stroke-width="1.5"/><rect x="114" y="20" width="124" height="32" rx="4" fill="none" stroke="#10b981" stroke-width="1.5"/><text x="24" y="12" fill="#94a3b8" font-size="9" font-family="ui-monospace,monospace">WATCH / ECG</text><text x="126" y="40" fill="#34d399" font-size="9" font-family="ui-monospace,monospace">SYNC / 500ms CUE</text></svg>'
-        };
-        return map[cat] || '';
-    }
-
-    function updateReadinessIndex() {
-        const activeIds = getActiveMetricIds();
-        let score = 100, worstTier = 'GREEN', loggedCount = 0;
-        activeIds.forEach(id => {
-            const m = metrics[id];
-            if (m.stale) { score -= 5; if (worstTier === 'GREEN') worstTier = 'YELLOW'; return; }
-            if (m.history.length === 0) return;
-            loggedCount++;
-            const res = evaluateTriageTier(m.history[m.history.length - 1], m);
-            if (res.tier === 'RED') { score -= 22; worstTier = 'RED'; }
-            else if (res.tier === 'YELLOW') { score -= 8; if (worstTier !== 'RED') worstTier = 'YELLOW'; }
-        });
-        score = Math.max(0, Math.min(100, score));
-        document.getElementById('readiness-score').innerText = score;
-        document.getElementById('readiness-badge').innerHTML = getDualCodedBadgeHTML(worstTier, false, loggedCount === 0 && !activeIds.some(id => metrics[id].stale));
-    }
-
-    function updateBodyMap() {
-        const regionMap = [
-            { cat: 'NEURO/OCULAR', svgId: 'svg-node-neuro', dotId: 'dot-neuro', subId: 'sub-neuro' },
-            { cat: 'MENTAL/SLEEP', svgId: 'svg-node-mental', dotId: 'dot-mental', subId: 'sub-mental' },
-            { cat: 'CARDIO/AIR', svgId: 'svg-node-cardio', dotId: 'dot-cardio', subId: 'sub-cardio' },
-            { cat: 'DIET/SUSTENANCE', svgId: 'svg-node-diet', dotId: 'dot-diet', subId: 'sub-diet' },
-            { cat: 'BONE/HYDRATION', svgId: 'svg-node-bone', dotId: 'dot-bone', subId: 'sub-bone' },
-            { cat: 'GYN/CYCLE', svgId: 'svg-node-gyn', dotId: 'dot-gyn', subId: 'sub-gyn' }
-        ];
-        const activeIds = getActiveMetricIds();
-        regionMap.forEach(reg => {
-            const matching = activeIds.filter(id => metrics[id].cat === reg.cat);
-            const svgEl = document.getElementById(reg.svgId), dotEl = document.getElementById(reg.dotId), subEl = document.getElementById(reg.subId);
-            if (!svgEl || !dotEl || !subEl) return;
-            if (matching.length === 0) {
-                svgEl.setAttribute('fill', '#475569'); svgEl.setAttribute('class', '');
-                dotEl.className = 'w-2 h-2 rounded-full bg-slate-600 shrink-0'; subEl.innerText = 'Inactive'; return;
-            }
-            if (!matching.some(id => metrics[id].history.length > 0 || metrics[id].stale)) {
-                svgEl.setAttribute('fill', '#64748b'); svgEl.setAttribute('class', '');
-                dotEl.className = 'w-2 h-2 rounded-full bg-slate-500 shrink-0'; subEl.innerText = 'Awaiting log'; return;
-            }
-            let state = 'GREEN';
-            matching.forEach(id => {
-                const m = metrics[id];
-                if (m.stale) { if (state === 'GREEN') state = 'YELLOW'; return; }
-                if (m.history.length === 0) return;
-                const res = evaluateTriageTier(m.history[m.history.length - 1], m);
-                if (res.tier === 'RED') state = 'RED';
-                else if (res.tier === 'YELLOW' && state !== 'RED') state = 'YELLOW';
-            });
-            if (state === 'RED') { svgEl.setAttribute('fill', '#ef4444'); svgEl.setAttribute('class', 'node-pulse-red'); dotEl.className = 'w-2 h-2 rounded-full bg-red-500 shrink-0'; subEl.innerText = 'Warning (Red)'; }
-            else if (state === 'YELLOW') { svgEl.setAttribute('fill', '#f59e0b'); svgEl.setAttribute('class', 'node-pulse-amber'); dotEl.className = 'w-2 h-2 rounded-full bg-amber-400 shrink-0'; subEl.innerText = 'Caution (Yellow)'; }
-            else { svgEl.setAttribute('fill', '#10b981'); svgEl.setAttribute('class', 'node-pulse-green'); dotEl.className = 'w-2 h-2 rounded-full bg-emerald-400 shrink-0'; subEl.innerText = 'Nominal (Green)'; }
-        });
-
-        document.querySelectorAll('.body-node-btn').forEach(btn => {
-            const isActive = btn.getAttribute('data-region') === currentFilter;
-            btn.classList.toggle('border-sky-400', isActive); btn.classList.toggle('bg-[#0e1420]', isActive);
-            btn.classList.toggle('border-slate-800', !isActive); btn.classList.toggle('bg-[#090d16]', !isActive);
-        });
-        document.getElementById('btn-all-systems').className = currentFilter === 'ALL'
-            ? 'text-xs font-medium px-2.5 py-1 rounded border bg-sky-500/15 text-sky-300 border-sky-500/40'
-            : 'text-xs font-medium px-2.5 py-1 rounded border bg-[#090d16] text-slate-300 border-slate-700 hover:border-slate-500';
-    }
-
-    const corridorPlugin = {
-        id: 'corridorPlugin',
-        beforeDatasetsDraw(chart, args, opts) {
-            const { ctx, chartArea, scales } = chart;
-            if (!chartArea || !scales.y || !scales.x) return;
-            const { nomMin, nomMax, histCount, breachesCaution } = opts;
-            const yTop = scales.y.getPixelForValue(nomMax), yBottom = scales.y.getPixelForValue(nomMin);
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
-            ctx.clip();
-            ctx.fillStyle = 'rgba(16, 185, 129, 0.12)';
-            ctx.fillRect(chartArea.left, Math.min(yTop, yBottom), chartArea.right - chartArea.left, Math.abs(yBottom - yTop));
-            ctx.strokeStyle = 'rgba(16, 185, 129, 0.4)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
-            ctx.beginPath(); ctx.moveTo(chartArea.left, yTop); ctx.lineTo(chartArea.right, yTop);
-            ctx.moveTo(chartArea.left, yBottom); ctx.lineTo(chartArea.right, yBottom); ctx.stroke();
-            if (breachesCaution && histCount >= 3) {
-                const todayX = scales.x.getPixelForValue(histCount - 1);
-                ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
-                ctx.fillRect(todayX, chartArea.top, chartArea.right - todayX, chartArea.bottom - chartArea.top);
-            }
-            ctx.restore();
-        }
-    };
-
-    function renderTelemetryList() {
-        const container = document.getElementById('telemetry-list');
-        const overrideSelect = document.getElementById('override-metric');
-        container.innerHTML = ''; overrideSelect.innerHTML = '';
-        const allActiveIds = getActiveMetricIds();
-        allActiveIds.forEach(id => {
-            const opt = document.createElement('option');
-            opt.value = id; opt.innerText = metrics[id].name;
-            overrideSelect.appendChild(opt);
-        });
-        const filteredIds = currentFilter === 'ALL' ? allActiveIds : allActiveIds.filter(id => metrics[id].cat === currentFilter);
-        if (filteredIds.length > 0 && !filteredIds.includes(selectedMetricId)) selectedMetricId = filteredIds[0];
-
-        updateReadinessIndex(); updateBodyMap(); updateDynamicDietAlert();
-
-        if (filteredIds.length === 0) {
-            container.innerHTML = '<div class="text-slate-400 text-sm p-4">No telemetry metrics match this region for the current profile.</div>';
-            updateInspectionPanel(true); return;
-        }
-
-        filteredIds.forEach(id => {
-            const m = metrics[id];
-            const hasData = m.history.length > 0;
-            const currentValue = hasData ? m.history[m.history.length - 1] : null;
-            const evalRes = (m.stale || !hasData) ? { tier: 'GREEN', direction: 'nominal' } : evaluateTriageTier(currentValue, m);
-            const drift = getDriftDirection(m);
-            const isSelected = id === selectedMetricId;
-
-            const row = document.createElement('div');
-            row.className = `px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer border-l-2 ${isSelected ? 'bg-[#0e1420] border-l-sky-400' : 'border-l-transparent hover:bg-[#0e1420]/60'}`;
-            row.onclick = () => selectMetric(id);
-
-            const valueText = m.stale ? '***' : (hasData && typeof currentValue === 'number' ? formatValue(currentValue, m) : '--');
-            const chevronHTML = drift === 'up' ? '<span class="text-amber-400 font-bold text-sm ml-1">&#8599;</span>' : (drift === 'down' ? '<span class="text-amber-400 font-bold text-sm ml-1">&#8600;</span>' : '');
-            let leftDotHTML = '', rightBadgeHTML = '';
-            if (m.stale) rightBadgeHTML = getDualCodedBadgeHTML('GREEN', true, false);
-            else if (!hasData) { leftDotHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-600 shrink-0"></span>'; rightBadgeHTML = '<span class="text-[11px] text-slate-400 ml-2">Awaiting Log</span>'; }
-            else if (evalRes.tier === 'GREEN') leftDotHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"></span>';
-            else rightBadgeHTML = getDualCodedBadgeHTML(evalRes.tier, false, false);
-
-            row.innerHTML = `<div class="min-w-0 flex-1 flex items-center gap-2">${leftDotHTML}<span class="text-sm font-medium ${isSelected ? 'text-slate-50' : 'text-slate-200'} truncate">${m.name}</span>${rightBadgeHTML ? `<span class="shrink-0">${rightBadgeHTML}</span>` : ''}</div><div class="text-right shrink-0"><div class="font-mono tabular-nums text-sm font-semibold text-slate-50 flex items-baseline justify-end"><span>${valueText}</span><span class="text-xs font-normal text-slate-400 ml-1">${m.unit}</span>${chevronHTML}</div></div>`;
-            container.appendChild(row);
-        });
-        if (allActiveIds.includes(selectedMetricId)) overrideSelect.value = selectedMetricId;
-        updateInspectionPanel(false);
-    }
-
-    function selectMetric(id) {
-        const m = metrics[id];
-        if (!m) return;
-        if (currentFilter !== 'ALL' && m.cat !== currentFilter) currentFilter = 'ALL';
-        selectedMetricId = id;
-        const ov = document.getElementById('override-metric');
-        if (ov && ov.querySelector(`option[value="${id}"]`)) ov.value = id;
-        renderTelemetryList();
-    }
-
-    function renderTrendChart(m, hasData, forecast, nomMin, nomMax) {
-        document.getElementById('chart-empty-overlay').classList.toggle('hidden', hasData);
-        let histData = [...m.history];
-        if (currentTimeframe === '30D' && m.history.length >= 14 && m.history.length < 30) {
-            const needed = 30 - m.history.length;
-            if (!m.history30) m.history30 = generate30DBaseline(m);
-            histData = [...m.history30.slice(-needed), ...m.history];
-        }
-        const histLabels = histData.map((_, i) => (i === histData.length - 1 ? 'Today' : `Day ${i + 1}`));
-        const includeForecast = hasData && !forecast.insufficientBaseline && !m.stale;
-        const allLabels = includeForecast ? [...histLabels, '+1d', '+2d', '+3d', '+4d', '+5d', '+6d', '+7d'] : histLabels;
-        const histSeries = includeForecast ? [...histData, ...Array(7).fill(null)] : [...histData];
-        const projSeries = includeForecast ? [...Array(histData.length - 1).fill(null), forecast.currentVal, ...forecast.projected] : [];
-        const breachesCaution = includeForecast && forecast.breachDay !== null;
-        const allNumeric = [...histData, ...(includeForecast ? forecast.projected : []), nomMin, nomMax];
-        const minVal = Math.min(...allNumeric), maxVal = Math.max(...allNumeric);
-        const pad = m.id === 'usg' ? 0.004 : Math.max(Math.abs(maxVal - minVal) * 0.15, 0.4);
-        const suggestedMin = m.type === 'unidirectional_negative' ? minVal - pad : Math.max(0, minVal - pad);
-
-        if (chartInstance) chartInstance.destroy();
-        const datasets = [{ label: `${m.name} (${m.unit})`, data: histSeries, borderColor: '#38bdf8', backgroundColor: 'rgba(56,189,248,0.1)', borderWidth: 2, tension: 0.15, pointRadius: 2.5, pointBackgroundColor: '#090d16', pointBorderColor: '#38bdf8', fill: true }];
-        if (includeForecast) datasets.push({ label: '7-day forecast', data: projSeries, borderColor: breachesCaution ? '#f59e0b' : '#94a3b8', borderWidth: 2, borderDash: [6, 4], pointRadius: 2.5, pointBackgroundColor: breachesCaution ? '#f59e0b' : '#94a3b8', fill: false });
-
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        Chart.defaults.color = '#94a3b8'; Chart.defaults.font.family = 'system-ui, -apple-system, sans-serif';
-        chartInstance = new Chart(ctx, {
-            type: 'line', data: { labels: allLabels, datasets },
-            options: {
-                responsive: true, maintainAspectRatio: false, animation: false,
-                plugins: { legend: { display: false }, corridorPlugin: { nomMin, nomMax, histCount: histData.length, breachesCaution } },
-                scales: {
-                    x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 9, font: { family: 'ui-monospace,monospace', size: 11 } } },
-                    y: { grid: { color: '#1e293b' }, suggestedMin, suggestedMax: maxVal + pad, ticks: { font: { family: 'ui-monospace,monospace', size: 11 } } }
-                }
-            },
-            plugins: [corridorPlugin]
-        });
-    }
-
-    function renderEarlyDriftCallout(m, forecast) {
-        const el = document.getElementById('early-warning-container');
-        if (m.stale) { el.innerHTML = '<div class="bg-[#0e1420] border-l-2 border-l-slate-500 border border-slate-800 rounded p-3 text-xs text-slate-200"><span class="font-semibold">Early Drift Check Paused:</span> Sensor connection is stale (<span class="font-mono">DATA STALE</span>).</div>'; return; }
-        if (m.history.length < 3) { el.innerHTML = `<div class="bg-[#0e1420] border-l-2 border-l-slate-600 border border-slate-800 rounded p-3 text-xs text-slate-300">Collecting personal baseline (need 3 logged days for 7-day drift forecast). Logged: <span class="font-mono tabular-nums font-semibold text-slate-100">${m.history.length} / 3</span> days.</div>`; return; }
-        if (forecast.breachDay !== null) {
-            const sign = forecast.slope >= 0 ? '+' : '';
-            el.innerHTML = `<div class="bg-amber-950/30 border-l-2 border-l-amber-400 border border-amber-700/60 rounded p-3 text-xs text-amber-100 leading-relaxed"><span class="font-semibold text-amber-300">Early Drift Warning:</span> Even though today may still look okay, moving at <span class="font-mono tabular-nums">${sign}${forecast.slope.toFixed(m.id === 'usg' ? 3 : 2)} ${m.unit}/day</span> means <span class="font-semibold">${m.name}</span> will enter <span class="font-semibold">${forecast.breachTier}</span> status in <span class="font-mono tabular-nums font-semibold">${forecast.breachDay}</span> ${forecast.breachDay === 1 ? 'day' : 'days'} if nothing changes.</div>`;
-            return;
-        }
-        el.innerHTML = '';
-    }
-
-    function getMedicalHistoryGuard(metricId, evalRes) {
-        if (evalRes.tier === 'GREEN') return null;
-        if (metricId === 'cramping_pain' && crewProfile.medHistory.nsaidAllergy) return 'Medical History Safety Guard: NSAID sensitivity on file - avoid ibuprofen; use acetaminophen, heat packs, and gentle stretching.';
-        if (metricId === 'perchlorate' && evalRes.tier === 'RED' && crewProfile.medHistory.iodineAllergy) return 'Medical History Safety Guard: Iodine sensitivity on file - consult Flight Surgeon before taking potassium iodide (KI).';
-        if ((metricId === 'ferritin' || metricId === 'hemoglobin') && crewProfile.medHistory.anemia) return 'Medical History Note: Prior low-iron history flagged - focus on iron-rich meals and close blood checks.';
-        if ((metricId === 'bmd' || metricId === 'calcium' || metricId === 'sodium_intake') && (crewProfile.medHistory.osteopenia || crewProfile.medHistory.kidneyStones)) return 'Medical History Note: Bone / kidney stone history on file - keep daily salt <3,000 mg/day and maintain gym workouts.';
-        if ((metricId === 'onsd' || metricId === 'iop' || metricId === 'sodium_intake') && crewProfile.medHistory.sans) return 'Medical History Note: Prior eye-pressure sensitivity on file - prioritize daily Leg Vacuum (LBNP) sessions and low-salt meals.';
-        if ((metricId === 'ijv' || metricId === 'pill_missed') && crewProfile.medHistory.clottingFactor) return 'Medical History Note: Clotting risk status on file - run Doppler check right away and notify Flight Surgeon.';
-        return null;
-    }
-
-    function renderClinicalActions(m, hasData, evalRes) {
-        const container = document.getElementById('alerts-container');
-        let html = '';
-        getActiveMetricIds().forEach(id => {
-            if (id === selectedMetricId) return;
-            const bg = metrics[id];
-            if (bg.stale || bg.history.length === 0) return;
-            const bgEval = evaluateTriageTier(bg.history[bg.history.length - 1], bg);
-            if (bgEval.tier === 'RED') html += `<button type="button" onclick="selectMetric('${id}')" class="w-full text-left bg-red-950/50 hover:bg-red-900/50 border border-red-500/80 rounded p-2.5 flex items-center justify-between gap-2"><span class="text-xs font-semibold text-red-100">Red Alert in ${bg.name} - Click to inspect</span>${getDualCodedBadgeHTML('RED', false, false)}</button>`;
-        });
-
-        if (m.stale) { container.innerHTML = html + '<div class="p-3 rounded border border-slate-700 bg-[#0e1420] text-slate-200 text-xs">Check physical sensor contact or wireless sync and log a fresh reading.</div>'; return; }
-        if (!hasData) { container.innerHTML = html + `<div class="p-3 rounded border border-slate-800 bg-[#0e1420] text-slate-300 text-xs">Awaiting Day 1 reading for <span class="font-semibold text-slate-100">${m.name}</span>.</div>`; return; }
-        if (evalRes.tier === 'GREEN') { container.innerHTML = html + `<div class="py-2.5 px-3 rounded border border-emerald-800/60 bg-emerald-950/20 text-emerald-100 flex items-center gap-2.5">${getDualCodedBadgeHTML('GREEN', false, false)}<span class="text-xs text-emerald-100">Safe &amp; Normal - cleared for spacewalks and normal duties.</span></div>`; return; }
-
-        const isHigh = evalRes.direction === 'high';
-        const opAction = isHigh ? m.countermeasures?.high : m.countermeasures?.low;
-        const dietAction = isHigh ? m.diet?.high : m.diet?.low;
-        const isCritical = evalRes.tier === 'RED';
-        const boxClass = isCritical ? 'border-red-500/80 bg-red-950/30 text-red-50' : 'border-amber-500/70 bg-amber-950/25 text-amber-50';
-
-        if (isCritical && isAutonomousMode()) html += `<div class="p-2.5 rounded border border-red-500 bg-red-600/20 text-red-100 text-xs font-semibold flex items-center justify-between gap-2"><span>Self-Guided Mode (Signal Delay): Local Emergency Kit &amp; Spacewalk Hold Active</span>${getDualCodedBadgeHTML('RED', false, false)}</div>`;
-        const medGuard = getMedicalHistoryGuard(m.id, evalRes);
-        if (medGuard) html += `<div class="p-2.5 rounded border border-amber-500 bg-amber-950/40 text-amber-100 text-xs font-semibold">${medGuard}</div>`;
-        if (opAction) html += `<div class="p-3 rounded border ${boxClass}"><div class="flex items-center justify-between gap-2 mb-1.5"><span class="text-xs font-semibold text-slate-200">Action steps</span>${getDualCodedBadgeHTML(evalRes.tier, false, false)}</div><p class="text-xs leading-relaxed text-slate-100">${opAction}</p>${isCritical ? renderTwoStepControl(selectedMetricId) : ''}</div>`;
-        if (dietAction && dietAction !== 'None') html += `<div class="p-3 rounded border ${boxClass}"><div class="text-xs font-semibold text-slate-200 mb-1">Food &amp; water adjustment</div><p class="text-xs leading-relaxed text-slate-100">${dietAction}</p></div>`;
-        container.innerHTML = html;
-    }
-
-    function updateInspectionPanel(empty = false) {
-        const badgeEl = document.getElementById('inspect-badge'), readoutEl = document.getElementById('inspect-current-readout'),
-              todayEl = document.getElementById('inspect-today-meaning'), hintEl = document.getElementById('inspect-range-hint');
-        if (empty) {
-            document.getElementById('inspect-title').innerText = 'Select a Metric';
-            document.getElementById('inspect-definition').innerText = '--';
-            document.getElementById('inspect-sensor').innerText = '--';
-            document.getElementById('inspect-sensor-svg').innerHTML = '';
-            todayEl.innerText = '--'; hintEl.innerText = ''; badgeEl.innerHTML = ''; readoutEl.innerText = '';
-            document.getElementById('chart-empty-overlay').classList.add('hidden');
-            if (chartInstance) chartInstance.destroy();
-            document.getElementById('alerts-container').innerHTML = ''; document.getElementById('early-warning-container').innerHTML = '';
-            return;
-        }
-        const m = metrics[selectedMetricId], hasData = m.history.length > 0, val = hasData ? m.history[m.history.length - 1] : null;
-        const evalRes = (m.stale || !hasData) ? { tier: 'GREEN', direction: 'nominal' } : evaluateTriageTier(val, m);
-        const drift = getDriftDirection(m), [nomMin, nomMax] = getNominalBounds(m);
-
-        document.getElementById('inspect-title').innerText = m.name;
-        badgeEl.innerHTML = getDualCodedBadgeHTML(evalRes.tier, m.stale, !hasData && !m.stale);
-        hintEl.innerText = `Safe Zone: ${nomMin} - ${nomMax} ${m.unit}`;
-        const driftSym = drift === 'up' ? ' &#8599;' : (drift === 'down' ? ' &#8600;' : '');
-        readoutEl.innerHTML = m.stale ? `*** <span class="text-xs font-normal text-slate-400">${m.unit}</span>` : (!hasData ? `-- <span class="text-xs font-normal text-slate-400">${m.unit}</span>` : `${formatValue(val, m)} <span class="text-xs font-normal text-slate-400">${m.unit}</span>${driftSym ? `<span class="text-amber-400">${driftSym}</span>` : ''}`);
-
-        if (m.stale) todayEl.innerText = 'Sensor signal stalled. Check physical contact or wireless sync, then log a fresh reading.';
-        else if (!hasData) todayEl.innerText = 'No reading logged yet today. Enter your first reading on the left or click "Load 14-Day Mission Log".';
-        else if (evalRes.tier === 'GREEN') todayEl.innerText = `Today's reading of ${formatValue(val, m)} ${m.unit} is right inside the Safe Normal Zone (${nomMin}-${nomMax} ${m.unit}). You are cleared for normal duties.`;
-        else if (evalRes.tier === 'RED') todayEl.innerText = `Red Warning: ${formatValue(val, m)} ${m.unit} is outside safe limits. Follow the action steps above right away.`;
-        else todayEl.innerText = `Yellow Caution: ${formatValue(val, m)} ${m.unit} is drifting outside the Safe Normal Zone (${nomMin}-${nomMax} ${m.unit}). Take the simple steps above early.`;
-
-        document.getElementById('inspect-definition').innerText = m.definition;
-        document.getElementById('inspect-sensor').innerHTML = m.sensor.replace(/\n/g, '<br>');
-        document.getElementById('inspect-sensor-svg').innerHTML = getSvgForCategory(m.cat);
-        const forecast = compute7DayForecast(m);
-        renderTrendChart(m, hasData, forecast, nomMin, nomMax);
-        renderEarlyDriftCallout(m, forecast);
-        renderClinicalActions(m, hasData, evalRes);
-    }
-
-    function updateDynamicDietAlert() {
-        const adjustments = [];
-        getActiveMetricIds().forEach(id => {
-            const m = metrics[id];
-            if (m.stale || m.history.length === 0) return;
-            const res = evaluateTriageTier(m.history[m.history.length - 1], m);
-            if (res.tier === 'GREEN') return;
-            const dietTxt = res.direction === 'high' ? m.diet?.high : m.diet?.low;
-            if (dietTxt && dietTxt !== 'None') adjustments.push({ name: m.name, text: dietTxt, tier: res.tier });
-        });
-        document.getElementById('dynamic-diet-alert').innerHTML = adjustments.map(a => `<div class="mt-2 p-2.5 rounded border ${a.tier === 'RED' ? 'border-red-500/70 bg-red-950/30 text-red-100' : 'border-amber-500/70 bg-amber-950/25 text-amber-100'} text-xs"><span class="font-semibold">Food &amp; Water Update (${a.name}):</span> ${a.text}</div>`).join('');
-    }
-
-    function renderTwoStepControl(id) {
-        const isArmed = Boolean(armedInterventions[id]), exAt = executedInterventions[id];
-        const note = exAt ? `<div class="mt-2 text-xs text-emerald-300 font-medium">Action executed &amp; logged at <span class="font-mono tabular-nums">${exAt}</span>.</div>` : '';
-        if (!isArmed) return `<div class="mt-2.5 pt-2.5 border-t border-red-500/30 flex items-center justify-between gap-2"><span class="text-[11px] text-red-200">Two-step safety lock active</span><button type="button" onclick="armCountermeasure('${id}')" class="text-xs font-semibold px-3 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950">Arm Countermeasure</button></div>${note}`;
-        return `<div class="mt-2.5 pt-2.5 border-t border-red-500/40 flex flex-wrap items-center justify-between gap-2"><span class="text-[11px] font-semibold text-amber-300">Armed - Ready to execute</span><div class="flex items-center gap-2"><button type="button" onclick="cancelArmCountermeasure('${id}')" class="text-xs font-medium px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600">Cancel</button><button type="button" onclick="confirmCountermeasure('${id}')" class="text-xs font-semibold px-3 py-1.5 rounded bg-red-600 hover:bg-red-500 text-white border border-red-400">Confirm &amp; Log Execution</button></div></div>${note}`;
-    }
-
-    window.armCountermeasure = (id) => { armedInterventions[id] = true; updateInspectionPanel(false); };
-    window.cancelArmCountermeasure = (id) => { armedInterventions[id] = false; updateInspectionPanel(false); };
-    window.confirmCountermeasure = (id) => {
-        armedInterventions[id] = false;
-        const n = new Date();
-        executedInterventions[id] = `${String(n.getUTCHours()).padStart(2,'0')}:${String(n.getUTCMinutes()).padStart(2,'0')}:${String(n.getUTCSeconds()).padStart(2,'0')} UTC`;
-        updateInspectionPanel(false);
-    };
-
-    function updateHeaderStatus() {
-        const el = document.getElementById('comms-status');
-        el.innerText = isAutonomousMode() ? '14-20 Min Delay - Self-Guided Mode' : 'Live Earth Support';
-        el.className = isAutonomousMode()
-            ? 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-700'
-            : 'inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800';
-    }
-
-    function updateLocationKitAndContext() {
-        const kitEl = document.getElementById('location-med-kit'), ctxEl = document.getElementById('env-context-details');
-        const info = {
-            '0g_station': ['ISS Full Med Bay (Ultrasound, ARED Gym, Air Scrubbers)', '<div><strong class="text-slate-200">Zero Gravity (0g):</strong> Fluid floats into your head (eye pressure) and bones shed calcium (-0.5%/mo; urine calcium 250-400 mg/24h). Keep salt &lt;3,000 mg/d.</div><div><strong class="text-slate-200">Cabin Air:</strong> 21-24 °C; CO2 1.5-3.0 mmHg; live doctor support.</div>'],
-            '0g_transit': ['Deep-Space Transit Bay (Leg Vacuum Chamber, Shielded Med Stock)', '<div><strong class="text-slate-200">Deep Space (0g):</strong> 3-yr radiation weakens stored Vit C / B1 / pill strength; keep iron &le;8 mg/d if suppressed or male.</div><div><strong class="text-slate-200">Radio Delay:</strong> 14-20 min delay; self-guided alerts active.</div>'],
-            '0.166g': ['Lunar Base Habitat Lab (Urine Dust Analyzer, Wall Height Bar, Blood Reader)', '<div><strong class="text-slate-200">Moon Gravity (0.166g):</strong> Walking loads bones lightly; 8-hr walks burn 200-450 kcal/hr (eat extra carbs &amp; water).</div><div><strong class="text-slate-200">Dust &amp; Suit:</strong> Cooling garment holds 37.0-37.8 °C; airlock washes abrasive Moon dust.</div>'],
-            '0.166g_rover': ['Rover Basic Kit Only (Radiation Badge, Suit Telemetry, Blood Reader, ORS)', '<div><strong class="text-slate-200">Small Machine / Basic Kit:</strong> Habitat dust lab &amp; height bar are not aboard the rover, so only suit, radiation, blood pressure, hydration, and watch sensors run here.</div><div><strong class="text-slate-200">Suit Comfort:</strong> Tight pelvic harness can worsen cramps; return to base on Red alert.</div>'],
-            '0.38g': ['Mars Habitat Autonomous Lab (Blood/Urine Reader, Shielded Stock, KI Tablets)', '<div><strong class="text-slate-200">Mars Gravity &amp; Soil (0.38g):</strong> Rough slopes increase exertion; toxic soil dust (&gt;5.0 ug/L) blocks thyroid iodine.</div><div><strong class="text-slate-200">Cold &amp; Delay:</strong> -60 °C exterior increases calorie burn &amp; cold cramps; 14-20 min delay activates self-guided mode.</div>']
-        };
-        [kitEl.innerText, ctxEl.innerHTML] = info[currentEnv];
-    }
-
-    function updateGenderProfileUI() {
-        const gynBar = document.getElementById('gyn-node-bar'), gynLabel = document.getElementById('label-gyn-node'), gynRow = document.getElementById('gyn-checkin-row');
-        const dietPref = crewProfile.dietaryPreference || 'Standard Space Ration';
-        const allergyNote = (crewProfile.foodAllergies && crewProfile.foodAllergies.toLowerCase() !== 'none') ? ` · Avoid: ${crewProfile.foodAllergies}` : '';
-        if (currentGender === 'FEMALE_CYCLE') {
-            document.getElementById('galley-protocol').innerText = `${dietPref} · 1,500 IU Vit D3 + High-Iron (>=18 mg/d)${crewProfile.medHistory.anemia ? ' + Extra Iron' : ''}${allergyNote}`;
-            gynBar.classList.remove('hidden'); gynLabel.innerText = 'Cycle, Blood Iron & Comfort (Mode B: Natural Cycle)'; gynRow.classList.remove('hidden');
-        } else if (currentGender === 'FEMALE_SUPPRESSED') {
-            document.getElementById('galley-protocol').innerText = `${dietPref} · 1,500 IU Vit D3 + Low-Iron (<=8 mg/d cap)${allergyNote}`;
-            gynBar.classList.remove('hidden'); gynLabel.innerText = 'Pill Check, Blood Iron & Comfort (Mode A: Suppression)'; gynRow.classList.remove('hidden');
-        } else {
-            document.getElementById('galley-protocol').innerText = `${dietPref} · 1,500 IU Vit D3 + Low-Iron (<=8 mg/d cap)${allergyNote}`;
-            gynBar.classList.add('hidden'); gynRow.classList.add('hidden');
-            if (currentFilter === 'GYN/CYCLE') currentFilter = 'ALL';
-        }
-        updateRoutineProgressCount();
-    }
-
-    function updateExerciseAndFreezeUI() {
-        const exEl = document.getElementById('exercise-target'), pill = document.getElementById('streak-frozen-pill'), desc = document.getElementById('freeze-status-desc');
-        exEl.innerText = evaFreezeMode ? '85% (-15% EVA/Cycle Load)' : '100% Baseline';
-        exEl.className = `text-sm font-bold font-mono tabular-nums ${evaFreezeMode ? 'text-amber-300' : 'text-emerald-300'}`;
-        pill.classList.toggle('hidden', !evaFreezeMode);
-        desc.innerText = evaFreezeMode ? 'Streak protected during EVAs or severe cramping. Workout load reduced by 15%.' : 'Freezes your streak during EVAs and reduces workout load by 15%.';
-    }
-
-    // =========================================================================
-    // DEMO SCENARIOS & EVENT HANDLERS
-    // =========================================================================
-
-    function load14DayMissionLog() {
-        getActiveMetricIds().forEach(id => {
-            const m = metrics[id];
-            if (id === 'dietary_iron') m.history = [...(currentGender === 'FEMALE_CYCLE' ? nominalBaselines14D.dietary_iron_cycle : nominalBaselines14D.dietary_iron_suppressed)];
-            else if (id === 'fluid_intake') m.history = [...(currentGender === 'MALE' ? nominalBaselines14D.fluid_intake_male : nominalBaselines14D.fluid_intake_female)];
-            else if (id === 'calcium') m.history = [...(currentEnv === '0.38g' ? nominalBaselines14D.calcium_mars : nominalBaselines14D.calcium_iss)];
-            else m.history = [...nominalBaselines14D[id]];
-            m.history30 = null; m.stale = false; armedInterventions[id] = false; delete executedInterventions[id];
-        });
-        renderTelemetryList();
-    }
-
-    function triggerAllNormalDemo() {
-        const payload = {};
-        getActiveMetricIds().forEach(id => {
-            if (id === 'dietary_iron') payload[id] = currentGender === 'FEMALE_CYCLE' ? 20 : 6;
-            else if (id === 'fluid_intake') payload[id] = currentGender === 'MALE' ? 2750 : 2350;
-            else if (id === 'calcium') payload[id] = currentEnv === '0.38g' ? 275 : 320;
-            else payload[id] = nominalBaselines14D[id][13];
-            armedInterventions[id] = false; delete executedInterventions[id];
-        });
-        window.ingestTelemetryPayload(payload);
-    }
-
-    function triggerEarlyDriftDemo() {
-        if (currentGender === 'FEMALE_CYCLE') {
-            window.ingestTelemetryPayload({ ferritin: 32, cramping_pain: 2, magnesium_intake: 280 });
-            window.ingestTelemetryPayload({ ferritin: 29, cramping_pain: 4, magnesium_intake: 245 });
-            window.ingestTelemetryPayload({ ferritin: 26, cramping_pain: 5, magnesium_intake: 215 });
-        } else if (currentGender === 'FEMALE_SUPPRESSED') {
-            window.ingestTelemetryPayload({ pill_potency: 91, dietary_iron: 7, sodium_intake: 2950 });
-            window.ingestTelemetryPayload({ pill_potency: 88, dietary_iron: 10, sodium_intake: 3200 });
-            window.ingestTelemetryPayload({ pill_potency: 85, dietary_iron: 12, sodium_intake: 3450 });
-        } else if (currentEnv === '0g_station' || currentEnv === '0g_transit') {
-            window.ingestTelemetryPayload({ onsd: 5.6, calcium: 375, sodium_intake: 2900 });
-            window.ingestTelemetryPayload({ onsd: 5.8, calcium: 395, sodium_intake: 3150 });
-            window.ingestTelemetryPayload({ onsd: 6.0, calcium: 415, sodium_intake: 3400 });
-        } else if (currentEnv === '0.38g') {
-            window.ingestTelemetryPayload({ osmolality: 292, fluid_intake: 2100 });
-            window.ingestTelemetryPayload({ osmolality: 294, fluid_intake: 1900 });
-            window.ingestTelemetryPayload({ osmolality: 296, fluid_intake: 1750 });
-        } else if (currentEnv === '0.166g_rover') {
-            window.ingestTelemetryPayload({ ortho: 86, fluid_intake: 2200 });
-            window.ingestTelemetryPayload({ ortho: 83, fluid_intake: 1950 });
-            window.ingestTelemetryPayload({ ortho: 81, fluid_intake: 1750 });
-        } else {
-            window.ingestTelemetryPayload({ dust: 3.8, caloric_balance: 89 });
-            window.ingestTelemetryPayload({ dust: 4.3, caloric_balance: 84 });
-            window.ingestTelemetryPayload({ dust: 4.8, caloric_balance: 79 });
-        }
-    }
-
-    function triggerEmergencyDemo() {
-        if (currentGender === 'FEMALE_CYCLE') window.ingestTelemetryPayload({ hemoglobin: 10.6, cramping_pain: 8, magnesium_intake: 180 });
-        else if (currentGender === 'FEMALE_SUPPRESSED') window.ingestTelemetryPayload({ dietary_iron: 19, pill_missed: 3, sodium_intake: 3950 });
-        else if (currentEnv === '0g_station' || currentEnv === '0g_transit') window.ingestTelemetryPayload({ onsd: 7.1, calcium: 525, sodium_intake: 3920 });
-        else if (currentEnv === '0.38g') window.ingestTelemetryPayload({ perchlorate: 28.0, iodine_intake: 85 });
-        else window.ingestTelemetryPayload({ emuco2: 8.2, caloric_balance: 70 });
-    }
-
-    function submitManualLog() {
-        const metricId = document.getElementById('override-metric').value, valInput = document.getElementById('override-value');
-        if (valInput.value !== '') {
-            const val = parseFloat(valInput.value);
-            if (!isNaN(val)) window.ingestTelemetryPayload({ [metricId]: val });
-            valInput.value = '';
-        }
-    }
-
-    ['exertion-ared', 'exertion-treadmill', 'exertion-eva'].forEach(elId => {
-        document.getElementById(elId).addEventListener('input', () => {
-            exertionState.aredKg = Math.max(0, parseFloat(document.getElementById('exertion-ared').value) || 0);
-            exertionState.treadmillKm = Math.max(0, parseFloat(document.getElementById('exertion-treadmill').value) || 0);
-            exertionState.evaHours = Math.max(0, parseFloat(document.getElementById('exertion-eva').value) || 0);
-            exertionState.evaKcalOverride = null;
-            updateDynamicTargetsUI();
-        });
-    });
-
-    document.getElementById('prof-sex-mode').addEventListener('change', syncSetupModalGynVisibility);
-    document.getElementById('btn-edit-profile').addEventListener('click', openProfileModal);
-    document.getElementById('btn-edit-profile-inline').addEventListener('click', openProfileModal);
-    document.getElementById('btn-close-modal').addEventListener('click', closeProfileModal);
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.getElementById('profile-setup-modal').classList.contains('hidden')) closeProfileModal(); });
-
-    document.getElementById('btn-preset-female-cycle').addEventListener('click', () => populateSetupForm({
-        ...defaultProfile, astronautId: 'ASTRO-052', name: 'Dr. Maya Lin', age: 32, role: 'Flight Engineer / EVA Specialist',
-        heightCm: 164, weightKg: 58, bodyFatPct: 22.0, bmdTScore: -0.2, sexMode: 'FEMALE_CYCLE', cycleLengthDays: 29, cycleDay: 2,
-        flowBaseline: 'Moderate', crampingBaseline: 'Moderate (4-6 NRS)', dietaryPreference: 'Plant-Forward / Vegetarian', foodAllergies: 'Shellfish',
-        medHistory: { ...defaultProfile.medHistory, anemia: true, kidneyStones: true, nsaidAllergy: true }
-    }));
-
-    document.getElementById('btn-sample-profile').addEventListener('click', () => populateSetupForm({
-        ...defaultProfile, astronautId: 'ASTRO-084', name: 'Cmdr. Elena Vance', age: 34, role: 'Payload & Medical Officer',
-        heightCm: 168, weightKg: 62, bodyFatPct: 21.5, bmdTScore: -0.4, sexMode: 'FEMALE_SUPPRESSED',
-        suppressionRegimen: 'Continuous Combined Oral Pill', dietaryPreference: 'Low-Sodium Baseline', foodAllergies: 'None',
-        medHistory: { ...defaultProfile.medHistory, kidneyStones: true, sans: true }
-    }));
-
-    document.getElementById('btn-preset-male').addEventListener('click', () => populateSetupForm({
-        ...defaultProfile, astronautId: 'ASTRO-019', name: 'Maj. Marcus Cole', age: 37, role: 'Mission Commander',
-        heightCm: 180, weightKg: 78, bodyFatPct: 15.0, bmdTScore: 0.2, sexMode: 'MALE',
-        dietaryPreference: 'Standard Space Ration', foodAllergies: 'None',
-        medHistory: { ...defaultProfile.medHistory, sans: true }
-    }));
-
-    document.getElementById('profile-setup-form').addEventListener('submit', (e) => { e.preventDefault(); applyProfileToApp(readProfileFromForm(), true); closeProfileModal(); });
-    document.getElementById('env-selector').addEventListener('change', (e) => { currentEnv = e.target.value; updateHeaderStatus(); updateLocationKitAndContext(); renderTelemetryList(); });
-    document.getElementById('gender-selector').addEventListener('change', (e) => { crewProfile.sexMode = e.target.value; applyProfileToApp(crewProfile, true); });
-    document.querySelectorAll('.body-node-btn, .svg-body-node').forEach(el => el.addEventListener('click', () => { const r = el.getAttribute('data-region'); currentFilter = (currentFilter === r) ? 'ALL' : r; renderTelemetryList(); }));
-    document.getElementById('btn-all-systems').addEventListener('click', () => { currentFilter = 'ALL'; renderTelemetryList(); });
-    document.getElementById('btn-load-14d').addEventListener('click', load14DayMissionLog);
-    document.getElementById('btn-demo-normal').addEventListener('click', triggerAllNormalDemo);
-    document.getElementById('btn-demo-drift').addEventListener('click', triggerEarlyDriftDemo);
-    document.getElementById('btn-demo-emergency').addEventListener('click', triggerEmergencyDemo);
-
-    document.getElementById('btn-14d').addEventListener('click', (e) => {
-        currentTimeframe = '14D'; e.target.className = 'text-xs font-mono font-semibold px-2.5 py-1 rounded bg-sky-600 text-white';
-        document.getElementById('btn-30d').className = 'text-xs font-mono font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-slate-200'; updateInspectionPanel(false);
-    });
-    document.getElementById('btn-30d').addEventListener('click', (e) => {
-        currentTimeframe = '30D'; e.target.className = 'text-xs font-mono font-semibold px-2.5 py-1 rounded bg-sky-600 text-white';
-        document.getElementById('btn-14d').className = 'text-xs font-mono font-semibold px-2.5 py-1 rounded text-slate-400 hover:text-slate-200'; updateInspectionPanel(false);
-    });
-
-    document.getElementById('btn-log').addEventListener('click', submitManualLog);
-    document.getElementById('override-value').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitManualLog(); } });
-    document.getElementById('eva-freeze-toggle').addEventListener('change', (e) => { evaFreezeMode = e.target.checked; updateExerciseAndFreezeUI(); });
-
-    const checkboxes = document.querySelectorAll('.routine-check');
-    const getVisibleCheckboxes = () => Array.from(checkboxes).filter(cb => { const row = cb.closest('#gyn-checkin-row'); return !row || !row.classList.contains('hidden'); });
-    function updateRoutineProgressCount() {
-        const visible = getVisibleCheckboxes(), checkedCount = visible.filter(c => c.checked).length;
-        document.getElementById('routine-progress').innerText = `${checkedCount} / ${visible.length}`;
-        return { visible, checkedCount };
-    }
-    function evaluateRoutineCompletion() {
-        const { visible, checkedCount } = updateRoutineProgressCount(), banner = document.getElementById('routine-reward-banner');
-        if (checkedCount === visible.length && visible.length > 0) {
-            clearTimeout(routineResetTimeout); clearTimeout(rewardHideTimeout);
-            if (!evaFreezeMode) { streak++; document.getElementById('streak-counter').innerText = streak; banner.innerText = `Daily check-ins complete! Your Daily Streak is now ${streak}.`; }
-            else banner.innerText = `Daily check-ins complete! Your Daily Streak remains protected at ${streak}.`;
-            banner.classList.remove('hidden');
-            routineResetTimeout = setTimeout(() => { visible.forEach(c => { c.checked = false; }); updateRoutineProgressCount(); rewardHideTimeout = setTimeout(() => banner.classList.add('hidden'), 3000); }, 900);
-        }
-    }
-    checkboxes.forEach(cb => cb.addEventListener('change', evaluateRoutineCompletion));
-
-    document.getElementById('btn-run-pvt').addEventListener('click', () => { clearTimeout(pvtTimeout); document.getElementById('pvt-test-area').classList.remove('hidden'); pvtRound = 0; pvtLapses = 0; nextPvtRound(); });
-    function nextPvtRound() {
-        clearTimeout(pvtTimeout);
-        if (pvtRound >= 3) {
-            pvtState = 'idle'; document.getElementById('pvt-test-area').classList.add('hidden'); document.getElementById('check-pvt').checked = true;
-            window.ingestTelemetryPayload({ pvt: (pvtLapses / 3) * 100 }); evaluateRoutineCompletion(); return;
-        }
-        pvtState = 'waiting';
-        const box = document.getElementById('pvt-box');
-        box.className = 'bg-[#0e1420] border border-slate-700 rounded p-5 text-center cursor-pointer select-none';
-        box.innerHTML = `<span class="text-sm font-medium text-slate-300">Round <span class="font-mono tabular-nums">${pvtRound + 1}/3</span>: Wait for visual cue...</span>`;
-        pvtTimeout = setTimeout(() => { pvtState = 'ready'; box.className = 'bg-amber-500 border border-amber-300 rounded p-5 text-center cursor-pointer select-none'; box.innerHTML = '<span class="text-slate-950 font-bold text-base">Tap now!</span>'; pvtStartTime = performance.now(); }, 1000 + Math.random() * 1500);
-    }
-    document.getElementById('pvt-box').addEventListener('click', () => {
-        const box = document.getElementById('pvt-box');
-        if (pvtState === 'waiting') { clearTimeout(pvtTimeout); pvtState = 'cooldown'; box.className = 'bg-red-950/70 border border-red-500 rounded p-5 text-center cursor-pointer select-none'; box.innerHTML = '<span class="text-red-200 font-semibold text-sm">Too early - restarting round...</span>'; pvtTimeout = setTimeout(nextPvtRound, 900); }
-        else if (pvtState === 'ready') { const rt = performance.now() - pvtStartTime; if (rt > 500) pvtLapses++; pvtRound++; pvtState = 'cooldown'; box.className = 'bg-[#0e1420] border border-slate-700 rounded p-5 text-center cursor-pointer select-none'; box.innerHTML = `<span class="text-sky-300 font-mono tabular-nums font-semibold text-sm">${Math.round(rt)} ms</span>`; pvtTimeout = setTimeout(nextPvtRound, 800); }
-    });
-
-    // =========================================================================
-    // BACKEND INTEGRATION HOOKS
-    // =========================================================================
-
-    window.getCrewProfile = () => structuredCloneSafe(crewProfile);
-    window.setCrewProfile = (p) => { if (p && typeof p === 'object') { applyProfileToApp(p, true); closeProfileModal(); } };
-
-    window.ingestTelemetryPayload = function(data) {
-        if (!data || typeof data !== 'object') return;
-        let updated = false, focusTarget = null, criticalTarget = null;
-        const activeIds = getActiveMetricIds();
-        for (const [key, value] of Object.entries(data)) {
-            if (!metrics[key]) continue;
-            if (value === null) { metrics[key].stale = true; updated = true; if (activeIds.includes(key)) focusTarget = key; continue; }
-            if (typeof value !== 'number' && typeof value !== 'string') continue;
-            const num = parseFloat(value);
-            if (isNaN(num)) continue;
-            metrics[key].stale = false;
-            if (metrics[key].history.length >= 30) metrics[key].history.shift();
-            metrics[key].history.push(num); updated = true;
-            if (activeIds.includes(key)) { focusTarget = key; if (evaluateTriageTier(num, metrics[key]).tier === 'RED') criticalTarget = key; }
-        }
-        if (updated) {
-            const nextFocus = criticalTarget || focusTarget;
-            if (nextFocus && metrics[nextFocus]) { selectedMetricId = nextFocus; if (currentFilter !== 'ALL' && metrics[nextFocus].cat !== currentFilter) currentFilter = 'ALL'; }
-            renderTelemetryList();
-        }
-    };
-
-    window.ingestBackendSnapshot = function(snapshot) {
-        if (!snapshot || typeof snapshot !== 'object') return;
-        const envMap = { 'ISS_MICROGRAVITY_0G': '0g_station', 'DEEP_SPACE_TRANSIT_0G': '0g_transit', 'LUNAR_SURFACE_0166G': '0.166g', 'LUNAR_ROVER_0166G': '0.166g_rover', 'MARS_SURFACE_038G': '0.38g' };
-        if (snapshot.mission_environment && envMap[snapshot.mission_environment]) {
-            currentEnv = envMap[snapshot.mission_environment]; document.getElementById('env-selector').value = currentEnv;
-            updateHeaderStatus(); updateLocationKitAndContext();
-        }
-        const demo = snapshot.demographics || {}, med = snapshot.medical_history || {};
-        let resolvedSexMode = crewProfile.sexMode;
-        if (demo.sex === 'MALE') resolvedSexMode = 'MALE';
-        else if (demo.sex === 'FEMALE') resolvedSexMode = med.menses_mode === 'SUPPRESSED' ? 'FEMALE_SUPPRESSED' : 'FEMALE_CYCLE';
-
-        applyProfileToApp({
-            astronautId: snapshot.astronaut_id || crewProfile.astronautId, age: demo.age ?? crewProfile.age,
-            weightKg: demo.weight_kg ?? crewProfile.weightKg, heightCm: demo.height_cm ?? crewProfile.heightCm,
-            bodyFatPct: demo.body_fat_pct ?? crewProfile.bodyFatPct, sexMode: resolvedSexMode,
-            medHistory: { ...crewProfile.medHistory, kidneyStones: med.kidney_stone_history ?? crewProfile.medHistory.kidneyStones, sans: med.sans_vulnerability ?? crewProfile.medHistory.sans }
-        }, true);
-        closeProfileModal();
-
-        const ex = snapshot.exertion_telemetry || {};
-        exertionState.aredKg = ex.ared_workload_kg ?? exertionState.aredKg;
-        exertionState.treadmillKm = ex.treadmill_km ?? exertionState.treadmillKm;
-        exertionState.evaHours = ex.eva_hours ?? exertionState.evaHours;
-        exertionState.evaKcalOverride = ex.eva_kcal_burn !== undefined ? ex.eva_kcal_burn : null;
-        document.getElementById('exertion-ared').value = exertionState.aredKg;
-        document.getElementById('exertion-treadmill').value = exertionState.treadmillKm;
-        document.getElementById('exertion-eva').value = exertionState.evaHours;
-        updateDynamicTargetsUI();
-
-        const targets = computeDynamicTargets(), intake = snapshot.intake_logged || {}, lab = snapshot.lab_telemetry || {}, flat = {};
-        if (intake.calories_kcal !== undefined) {
-            flat.caloric_balance = +((intake.calories_kcal / targets.tActiveKcal) * 100).toFixed(1);
-            if (intake.carbs_g !== undefined) flat.carbs_pct = +(((intake.carbs_g * 4) / intake.calories_kcal) * 100).toFixed(1);
-            if (intake.fat_g !== undefined) flat.fats_pct = +(((intake.fat_g * 9) / intake.calories_kcal) * 100).toFixed(1);
-        }
-        if (intake.protein_g !== undefined) flat.protein_intake = +(intake.protein_g / (crewProfile.weightKg || 62)).toFixed(2);
-        if (intake.sodium_mg !== undefined) flat.sodium_intake = intake.sodium_mg;
-        if (intake.iron_mg !== undefined) flat.dietary_iron = intake.iron_mg;
-        if (intake.fiber_g !== undefined) flat.dietary_fiber = intake.fiber_g;
-        if (intake.fluid_ml !== undefined) flat.fluid_intake = intake.fluid_ml;
-        if (intake.potassium_mg !== undefined) flat.potassium_intake = intake.potassium_mg;
-        if (intake.magnesium_mg !== undefined) flat.magnesium_intake = intake.magnesium_mg;
-        if (intake.iodine_ug !== undefined) flat.iodine_intake = intake.iodine_ug;
-        if (lab.serum_osmolality_mOsm_kg !== undefined) flat.osmolality = lab.serum_osmolality_mOsm_kg;
-        if (lab.serum_ferritin_ug_L !== undefined) flat.ferritin = lab.serum_ferritin_ug_L;
-        if (lab.urinary_calcium_mg_24h !== undefined) flat.calcium = lab.urinary_calcium_mg_24h;
-        if (lab.hemoglobin_g_dL !== undefined) flat.hemoglobin = lab.hemoglobin_g_dL;
-        if (lab.urine_specific_gravity !== undefined) flat.usg = lab.urine_specific_gravity;
-        window.ingestTelemetryPayload(flat);
-    };
-
-    window.exportBackendSnapshot = function() {
-        const targets = computeDynamicTargets();
-        const envReverse = { '0g_station': 'ISS_MICROGRAVITY_0G', '0g_transit': 'DEEP_SPACE_TRANSIT_0G', '0.166g': 'LUNAR_SURFACE_0166G', '0.166g_rover': 'LUNAR_ROVER_0166G', '0.38g': 'MARS_SURFACE_038G' };
-        const latest = (id) => metrics[id]?.history.length > 0 ? metrics[id].history[metrics[id].history.length - 1] : null;
-        const score = parseInt(document.getElementById('readiness-score').innerText, 10) || 100;
-        let worstTier = 'GREEN';
-        getActiveMetricIds().forEach(id => {
-            const m = metrics[id];
-            if (m.history.length > 0 && !m.stale) {
-                const res = evaluateTriageTier(m.history[m.history.length - 1], m);
-                if (res.tier === 'RED') worstTier = 'RED';
-                else if (res.tier === 'YELLOW' && worstTier !== 'RED') worstTier = 'YELLOW';
-            }
-        });
-        return {
-            astronaut_id: crewProfile.astronautId, timestamp: new Date().toISOString(), mission_environment: envReverse[currentEnv] || 'ISS_MICROGRAVITY_0G',
-            demographics: { age: crewProfile.age, sex: crewProfile.sexMode === 'MALE' ? 'MALE' : 'FEMALE', weight_kg: crewProfile.weightKg, height_cm: crewProfile.heightCm, body_fat_pct: crewProfile.bodyFatPct },
-            medical_history: { menses_mode: crewProfile.sexMode === 'FEMALE_SUPPRESSED' ? 'SUPPRESSED' : (crewProfile.sexMode === 'FEMALE_CYCLE' ? 'NATURAL' : 'N/A'), kidney_stone_history: crewProfile.medHistory.kidneyStones, sans_vulnerability: crewProfile.medHistory.sans },
-            exertion_telemetry: { ared_workload_kg: exertionState.aredKg, treadmill_km: exertionState.treadmillKm, eva_hours: exertionState.evaHours, eva_kcal_burn: targets.eEva },
-            dynamic_targets_computed: { t_base_kcal: targets.tBaseKcal, t_active_kcal: targets.tActiveKcal, protein_target_g: targets.proteinTargetG, sodium_cap_mg: targets.sodiumCapMg },
-            intake_logged: { caloric_balance_pct: latest('caloric_balance'), protein_g_per_kg: latest('protein_intake'), sodium_mg: latest('sodium_intake'), iron_mg: latest('dietary_iron'), fluid_ml: latest('fluid_intake') },
-            lab_telemetry: { serum_osmolality_mOsm_kg: latest('osmolality'), urine_specific_gravity: latest('usg'), serum_ferritin_ug_L: latest('ferritin'), urinary_calcium_mg_24h: latest('calcium') },
-            status_calculated: { tier: worstTier, readiness_score: score, status_label: worstTier === 'GREEN' ? 'NOMINAL_STABLE' : (worstTier === 'YELLOW' ? 'CAUTION_DRIFT' : 'CRITICAL_ALERT'), eva_cleared: worstTier !== 'RED' }
-        };
-    };
-
-    // Init
-    updateHeaderStatus();
-    updateLocationKitAndContext();
-    updateExerciseAndFreezeUI();
-    applyProfileToApp(crewProfile, false);
-    if (!hasSavedProfile()) openProfileModal(); else closeProfileModal();
-</script>
+<footer class="footer">A.R.T.E.M.I.S. · NASA Space Apps prototype · Not a medical device. Ranges come from the team's research documents (see docs/thresholds.md).</footer>
+
+<!-- ============================================================ DIALOGS -->
+<dialog id="profile-dialog" aria-labelledby="profile-dialog-title">
+    <form id="profile-form" method="dialog">
+        <div class="dialog-head">
+            <div><h2 id="profile-dialog-title">Crew profile setup</h2><p>Sets your calorie, water, protein and iron targets, safety checks and cycle tracking.</p></div>
+            <button class="icon-btn" type="button" id="btn-close-profile" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        </div>
+        <div class="dialog-body">
+            <div class="presets">
+                <span>Quick presets</span>
+                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="cycle">Female · natural cycle</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="suppressed">Female · suppressed</button>
+                <button class="btn btn-secondary btn-sm" type="button" data-preset-profile="male">Male</button>
+            </div>
+            <fieldset>
+                <legend>1 · About you</legend>
+                <div class="form-grid">
+                    <label class="field"><span>Astronaut ID</span><input id="prof-id" type="text" required></label>
+                    <label class="field span-2"><span>Name / callsign</span><input id="prof-name" type="text" required></label>
+                    <label class="field"><span>Age</span><input id="prof-age" type="number" min="21" max="75" required></label>
+                    <label class="field"><span>Height (cm)</span><input id="prof-height" type="number" min="140" max="220" required></label>
+                    <label class="field"><span>Weight (kg)</span><input id="prof-weight" type="number" min="40" max="130" step="0.5" required></label>
+                    <label class="field"><span>Body fat (%)</span><input id="prof-bodyfat" type="number" min="5" max="50" step="0.5" required></label>
+                    <label class="field"><span>Bone density T-score</span><input id="prof-bmd-tscore" type="number" min="-4" max="3" step="0.1" required></label>
+                    <label class="field span-2"><span>Sex &amp; cycle mode</span>
+                        <select id="prof-sex-mode">
+                            <option value="FEMALE_CYCLE">Female · natural cycle (Mode B)</option>
+                            <option value="FEMALE_SUPPRESSED">Female · cycle suppression (Mode A)</option>
+                            <option value="MALE">Male</option>
+                        </select>
+                    </label>
+                    <label class="field span-2"><span>Mission role</span>
+                        <select id="prof-role">
+                            <option>Mission Commander</option>
+                            <option>Flight Engineer / EVA Specialist</option>
+                            <option>Payload &amp; Medical Officer</option>
+                            <option>Science &amp; Surface Geologist</option>
+                        </select>
+                    </label>
+                    <label class="field span-2"><span>Resting HRV baseline (ms)</span><input id="prof-hrv" type="number" min="10" max="150" step="1"></label>
+                </div>
+            </fieldset>
+            <fieldset id="prof-gyn-section">
+                <legend>2 · Cycle baseline</legend>
+                <div class="form-grid">
+                    <label class="field" data-cycle-only><span>Cycle length (days)</span><input id="prof-cycle-length" type="number" min="21" max="45"></label>
+                    <label class="field" data-cycle-only><span>Current cycle day</span><input id="prof-cycle-day" type="number" min="1" max="45"></label>
+                    <label class="field span-2" data-cycle-only><span>Typical flow</span>
+                        <select id="prof-flow-baseline"><option value="Light">Light (1–2 changes/day)</option><option value="Moderate">Moderate (2–3 changes/day)</option><option value="Heavy">Heavy (4+ changes/day)</option></select>
+                    </label>
+                    <label class="field span-4" data-suppressed-only><span>Suppression regimen</span>
+                        <select id="prof-suppression-type"><option>Continuous Combined Oral Pill</option><option>Progestin-Only Suppression Pill</option><option>LNG-IUD / Subdermal Implant</option></select>
+                    </label>
+                    <label class="field span-2"><span>Usual cramp pain</span>
+                        <select id="prof-cramp-baseline"><option>None / Mild (0-3 NRS)</option><option>Moderate (4-6 NRS)</option><option>Severe Dysmenorrhea (7-10 NRS)</option></select>
+                    </label>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>3 · Medical history</legend>
+                <div class="check-grid">
+                    <label class="check-card"><input id="hist-anemia" type="checkbox"> Low iron / anemia</label>
+                    <label class="check-card"><input id="hist-osteopenia" type="checkbox"> Low bone density</label>
+                    <label class="check-card"><input id="hist-kidney" type="checkbox"> Kidney stones (+500 mL water)</label>
+                    <label class="check-card"><input id="hist-sans" type="checkbox"> Eye / head pressure (SANS)</label>
+                    <label class="check-card" id="hist-pcos-wrap"><input id="hist-pcos" type="checkbox"> PCOS / endometriosis</label>
+                    <label class="check-card"><input id="hist-clotting" type="checkbox"> Clotting risk (Factor V Leiden)</label>
+                    <label class="check-card"><input id="hist-nsaid-allergy" type="checkbox"> Ibuprofen / NSAID sensitivity</label>
+                    <label class="check-card"><input id="hist-iodine-allergy" type="checkbox"> Iodine / KI sensitivity</label>
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>4 · Diet</legend>
+                <div class="form-grid">
+                    <label class="field span-2"><span>Diet preference</span>
+                        <select id="prof-diet"><option>Standard Space Ration</option><option>Plant-Forward / Vegetarian</option><option>Dairy-Free / Lactose-Free</option><option>Low-Sodium Baseline</option></select>
+                    </label>
+                    <label class="field span-2"><span>Food allergies</span><input id="prof-allergies" type="text"></label>
+                </div>
+            </fieldset>
+        </div>
+        <div class="dialog-foot">
+            <button class="btn btn-primary" type="submit" value="save">Save profile</button>
+        </div>
+    </form>
+</dialog>
+
+<dialog id="pvt-dialog" aria-labelledby="pvt-title">
+    <div class="dialog-head">
+        <div><h2 id="pvt-title">Reaction test (PVT)</h2><p>Tap the box (or press Space) as fast as you can each time it turns amber.</p></div>
+        <button class="icon-btn" type="button" id="btn-close-pvt" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="dialog-body">
+        <div class="row" id="pvt-setup">
+            <span class="small muted">Length:</span>
+            <div class="seg" role="group" aria-label="Test length">
+                <button type="button" data-pvt-len="60" aria-pressed="true">Quick · 1 min</button>
+                <button type="button" data-pvt-len="180" aria-pressed="false">Standard · 3 min</button>
+            </div>
+        </div>
+        <div class="pvt-box" id="pvt-box" role="button" tabindex="0" aria-live="polite"><div><div class="pvt-big">Start</div><div class="small">Tap here to begin</div></div></div>
+        <div class="row-between small muted"><span id="pvt-timer"></span><span id="pvt-stats"></span></div>
+    </div>
+</dialog>
+
+<dialog id="glossary-dialog" aria-labelledby="glossary-title">
+    <div class="dialog-head">
+        <div><h2 id="glossary-title">Glossary</h2><p>Space-medicine words in everyday language.</p></div>
+        <button class="icon-btn" type="button" id="btn-close-glossary" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="dialog-body">
+        <input type="text" id="glossary-search" placeholder="Search terms…" aria-label="Search glossary">
+        <dl class="glossary-list" id="glossary-list"></dl>
+    </div>
+</dialog>
+
+<div class="term-pop" id="term-pop" role="tooltip" hidden></div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
 </body>
 </html>
