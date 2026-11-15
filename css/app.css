@@ -7,6 +7,14 @@
      10%  --accent*    logo blue: primary actions, selection, focus, links
    Green / amber / red are reserved for health status only.
    ========================================================================== */
+@font-face {
+    font-family: "Plus Jakarta Sans";
+    src: url("../vendor/fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");
+    font-weight: 200 800;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     color-scheme: light;
 
@@ -110,9 +118,17 @@ code { font-size: 12px; background: var(--surface-3); padding: 1px 5px; border-r
 .topbar-sep { width: 1px; height: 28px; background: var(--line-2); }
 .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; white-space: nowrap; }
 .topbar-right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.select-pill { display: flex; align-items: center; gap: 8px; padding: 0 6px 0 14px; height: 44px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow); color: var(--accent); }
+.select-pill { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 14px; height: 44px; border-radius: 999px; background: var(--surface); box-shadow: var(--shadow); color: var(--accent); }
 .select-pill select { border: 0; background-color: transparent; box-shadow: none; min-height: 40px; padding: 0 30px 0 0; font-weight: 600; color: var(--text); width: auto; }
 .select-pill select:focus { box-shadow: none; }
+.signal { display: inline-flex; align-items: center; gap: 6px; height: 28px; margin-left: 4px; padding: 0 12px 0 12px; border-left: 1px solid var(--line-2); font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: help; }
+.signal-bars rect { fill: currentColor; }
+.signal.is-live { color: var(--ok-text); }
+.signal.is-auto { color: var(--warn-text); }
+.signal.is-auto .signal-bars rect:nth-child(n+2) { opacity: 0.25; }
+.signal.is-off { color: var(--crit-text); }
+.signal.is-off .signal-bars rect { opacity: 0.25; }
+.signal:focus-visible { outline-offset: -2px; }
 .pill { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--line-2); background: var(--surface); color: var(--text-2); }
 .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .pill.is-live { color: var(--ok-text); border-color: var(--ok-line); background: var(--ok-soft); }
@@ -496,7 +512,6 @@ legend { font-size: 13.5px; font-weight: 800; color: var(--accent); margin-botto
     .select-pill select { flex: 1; min-width: 0; }
     .profile-chip-text, .profile-chip > svg { display: none; }
     .profile-chip { padding: 0 6px; height: 44px; }
-    .pill { grid-row: 2; grid-column: 1 / -1; justify-self: start; }
     .ov-side { display: flex; }
     .stage-card { min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
     .stage { position: relative; inset: auto; height: 460px; background: radial-gradient(70% 60% at 50% 45%, #fff 0%, #f3f6fb 60%, #e9eef6 100%); }

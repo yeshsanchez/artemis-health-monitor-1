@@ -26,7 +26,7 @@ Astronauts are busy engineers, pilots and scientists, not doctors. A.R.T.E.M.I.S
 ## Run it
 
 No build step. Open `index.html` in a browser (Chrome, Edge, Firefox, Safari).
-It loads Chart.js 4.4.1, Three.js r147 and the Plus Jakarta Sans font from CDNs, so it needs an internet connection.
+**Works fully offline.** Chart.js, Three.js, the font and the 3D anatomy are bundled in the repo (`vendor/`, `models/`), and all data is stored in the browser, which suits a crew that may be minutes away from Earth.
 
 To host it, enable **GitHub Pages** (Settings → Pages → deploy from `main`, root). GitHub Pages on a private repo needs a paid plan, so make the repo public before submitting.
 
@@ -44,6 +44,7 @@ js/body3d.js        Three.js anatomy viewer (layers, hotspots, status glow)
 models/body.glb.js  BodyParts3D anatomy, simplified to ~4 MB, embedded so it works from disk
 tools/build-body.mjs rebuilds the model from the BodyParts3D download
 assets/             logo (wordmark), mark (A), favicon
+vendor/             Chart.js, Three.js, font (bundled for offline use)
 js/app.js           UI, check-ins, food log, journal, PVT, storage, export
 docs/thresholds.md  where every number comes from + open decisions for the team
 ```

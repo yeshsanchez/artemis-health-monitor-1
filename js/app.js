@@ -199,15 +199,25 @@
     /* ------------------------------------------------------------- header */
     function renderHeader(ids) {
         const e = env();
-        const pill = $('comms-status');
+        const sig = $('comms-status');
+        let text, cls, tip;
         if (e.autonomous) {
             const d = delayMinutes();
-            $('comms-text').textContent = d >= 26 ? `Blackout · ${d} min delay · fully on board` : `Self-guided · ${d} min delay to Earth`;
-            pill.className = 'pill is-auto';
+            const blackout = d >= 26;
+            text = blackout ? 'Blackout' : `${d} min`;
+            cls = blackout ? 'signal is-off' : 'signal is-auto';
+            tip = blackout
+                ? `Solar blackout: about ${d} minutes each way. The app runs fully on board.`
+                : `Self-guided mode: messages take ${d} minutes to reach Earth, so the app guides you on its own.`;
         } else {
-            $('comms-text').textContent = `Live Earth link · ${e.delay.text}`;
-            pill.className = 'pill is-live';
+            text = 'Live';
+            cls = 'signal is-live';
+            tip = `Live link to Earth (${e.delay.text} delay). A flight surgeon can be reached in real time.`;
         }
+        $('comms-text').textContent = text;
+        sig.className = cls;
+        sig.title = tip;
+        sig.setAttribute('aria-label', tip);
         $('env-selector').value = state.env;
         const p = state.profile;
         $('header-profile-name').textContent = p.name;
@@ -406,7 +416,7 @@
         const cutoff = state.range === 'all' ? -Infinity : noonOf() - (parseInt(state.range, 10) - 1) * DAY_MS - DAY_MS / 2;
         const rows = m.history.filter(h => h.t >= cutoff);
         if (chart) { chart.destroy(); chart = null; }
-        if (typeof Chart === 'undefined') { empty.hidden = false; empty.textContent = 'Chart library could not load (offline?).'; return; }
+        if (typeof Chart === 'undefined') { empty.hidden = false; empty.textContent = 'The chart library could not load.'; return; }
         if (!rows.length) {
             empty.hidden = false;
             empty.innerHTML = m.history.length

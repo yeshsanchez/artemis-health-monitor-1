@@ -8,14 +8,12 @@
     <title>A.R.T.E.M.I.S. · Crew Health Monitor</title>
     <link rel="icon" type="image/png" href="assets/favicon.png">
     <link rel="apple-touch-icon" href="assets/mark.png">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/app.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js" defer></script>
+    <!-- Everything is bundled locally so the app works fully offline -->
+    <script src="vendor/chart.umd.js" defer></script>
+    <script src="vendor/three/three.min.js" defer></script>
+    <script src="vendor/three/GLTFLoader.js" defer></script>
+    <script src="vendor/three/RoomEnvironment.js" defer></script>
     <script src="models/body.glb.js" defer></script>
     <script src="js/metrics.js" defer></script>
     <script src="js/content.js" defer></script>
@@ -60,8 +58,8 @@
             <h1 class="page-title" id="page-title">Crew overview</h1>
         </div>
         <div class="topbar-right">
-            <label class="select-pill">
-                <span class="sr-only">Location</span>
+            <div class="select-pill">
+                <label class="sr-only" for="env-selector">Location</label>
                 <svg width="16" height="16" aria-hidden="true"><use href="#i-rocket"/></svg>
                 <select id="env-selector">
                     <option value="0g_station">ISS · microgravity</option>
@@ -70,8 +68,11 @@
                     <option value="0.166g_rover">Moon rover / EVA</option>
                     <option value="0.38g">Mars habitat</option>
                 </select>
-            </label>
-            <span id="comms-status" class="pill is-live"><span class="dot"></span><span id="comms-text">Live Earth link</span></span>
+                <span class="signal is-live" id="comms-status" role="status" tabindex="0">
+                    <svg class="signal-bars" width="16" height="14" viewBox="0 0 16 14" aria-hidden="true"><rect x="1" y="9" width="3" height="5" rx="1"/><rect x="6.5" y="5" width="3" height="9" rx="1"/><rect x="12" y="1" width="3" height="13" rx="1"/></svg>
+                    <span id="comms-text">Live</span>
+                </span>
+            </div>
             <button type="button" class="round-btn" id="btn-reminders" aria-label="Today's check-ins"><svg width="20" height="20"><use href="#i-bell"/></svg><i class="round-badge" id="bell-badge" hidden></i></button>
             <button id="btn-edit-profile" class="profile-chip" type="button" aria-label="Edit crew profile">
                 <span class="avatar" id="profile-initials">EV</span>
@@ -90,7 +91,7 @@
                         <canvas id="body-canvas" tabindex="0" aria-label="3D anatomy. Drag or use arrow keys to rotate."></canvas>
                         <div class="hotspots" id="body-hotspots"></div>
                         <div class="stage-loading" id="stage-loading"><span class="spinner"></span>Loading anatomy…</div>
-                        <div class="body-fallback" id="body-fallback" hidden>The 3D body needs WebGL and an internet connection for the 3D library. Body areas still work from the list.</div>
+                        <div class="body-fallback" id="body-fallback" hidden>The 3D body needs WebGL, which this browser has turned off. Body areas still work from the list.</div>
                         <div class="stage-tools" aria-label="View controls">
                             <button class="tool-btn" type="button" data-zoom="1" aria-label="Zoom in" title="Zoom in"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M11 8v6M8 11h6M16 16l4 4"/></svg></button>
                             <button class="tool-btn" type="button" data-zoom="-1" aria-label="Zoom out" title="Zoom out"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M8 11h6M16 16l4 4"/></svg></button>
