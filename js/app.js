@@ -18,8 +18,28 @@
         Object.assign(COLORS, {
             accent: cssVar('--accent'), ok: cssVar('--ok'), warn: cssVar('--warn'), crit: cssVar('--crit'), idle: cssVar('--idle'),
             text: cssVar('--text'), text2: cssVar('--text-2'), text3: cssVar('--text-3'), line: cssVar('--line'),
-            ring: '#cdd6e4', accentGlow: cssVar('--accent'), grid: '#e7ebf2'
+            surface: cssVar('--surface'), ring: cssVar('--ring'), accentGlow: cssVar('--accent'), grid: cssVar('--line')
         });
+    }
+    const withAlpha = (hex, a) => {
+        const h = hex.replace('#', '');
+        const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
+        return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+    };
+
+    /* ------------------------------------------------------------- theme */
+    const THEME_KEY = 'artemis_theme';
+    const currentTheme = () => document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    function applyTheme(theme, save) {
+        document.documentElement.setAttribute('data-theme', theme);
+        if (save) { try { localStorage.setItem(THEME_KEY, theme); } catch { /* storage blocked */ } }
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', theme === 'dark' ? '#0b1020' : '#eef1f6');
+        const btn = $('btn-theme');
+        if (btn) btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
+        readColors();
+        if (viewer) viewer.setTheme(COLORS);
+        if (CTX !== undefined && document.readyState !== 'loading' && $('metric-list').childElementCount) render();
     }
 
     function toast(msg) {
@@ -444,8 +464,8 @@
             data: {
                 labels: [...labels, ...fcLabels],
                 datasets: [
-                    { label: m.name, data, borderColor: COLORS.accent, backgroundColor: 'rgba(50,83,223,0.08)', fill: true, borderWidth: 2.5, tension: 0.3,
-                      pointRadius: rows.length > 40 ? 0 : 2.5, pointHoverRadius: 4, pointBackgroundColor: '#ffffff', pointBorderColor: COLORS.accent, spanGaps: false },
+                    { label: m.name, data, borderColor: COLORS.accent, backgroundColor: withAlpha(COLORS.accent, 0.1), fill: true, borderWidth: 2.5, tension: 0.3,
+                      pointRadius: rows.length > 40 ? 0 : 2.5, pointHoverRadius: 4, pointBackgroundColor: COLORS.surface, pointBorderColor: COLORS.accent, spanGaps: false },
                     ...(showFc ? [{ label: '7-day forecast', data: proj, borderColor: breach ? COLORS.warn : COLORS.text2, borderDash: [6, 4], borderWidth: 2,
                         pointRadius: 2, pointBackgroundColor: breach ? COLORS.warn : COLORS.text2, fill: false, tension: 0 }] : [])
                 ]
@@ -457,7 +477,7 @@
                     legend: { display: false },
                     corridor: { min: zone.min, max: zone.max, forecastFrom: showFc ? values.length - 1 : null, breach },
                     tooltip: {
-                        backgroundColor: '#ffffff', borderColor: COLORS.line, borderWidth: 1, titleColor: COLORS.text, bodyColor: COLORS.text2, padding: 10, cornerRadius: 10,
+                        backgroundColor: COLORS.surface, borderColor: COLORS.line, borderWidth: 1, titleColor: COLORS.text, bodyColor: COLORS.text2, padding: 10, cornerRadius: 10,
                         filter: (item) => item.raw !== null && item.raw !== undefined,
                         callbacks: { label: (c) => `${c.dataset.label}: ${formatNumber(c.raw, m.decimals)} ${m.unit}` }
                     }
@@ -1258,6 +1278,12 @@
         // tabs
         document.querySelectorAll('.nav-btn[data-page]').forEach(b => b.addEventListener('click', () => switchPage(b.dataset.page)));
         $('btn-reminders').addEventListener('click', () => switchPage('today'));
+        $('btn-theme').addEventListener('click', () => applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true));
+        if (window.matchMedia) {
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            const follow = (e) => { let saved = null; try { saved = localStorage.getItem(THEME_KEY); } catch { /* ignore */ } if (!saved) applyTheme(e.matches ? 'dark' : 'light', false); };
+            if (mq.addEventListener) mq.addEventListener('change', follow);
+        }
 
         // today
         $('freeze-toggle').addEventListener('change', (e) => { state.freeze = e.target.checked; render(); });
@@ -1428,7 +1454,7 @@
 
     /* =============================================================== INIT */
     function init() {
-        readColors();
+        applyTheme(currentTheme(), false);
         buildTermIndex();
         loadState();
         wire();

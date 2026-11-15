@@ -278,6 +278,11 @@
                 if (!b64) { onLoad && onLoad(false); return; }
                 setTimeout(() => { try { load(b64ToBuffer(b64)); } catch (e) { console.error(e); onLoad && onLoad(false); } }, 30);
             },
+            setTheme(c) {
+                ringMat.color.set(c.ring);
+                shadow.material.opacity = document.documentElement.getAttribute('data-theme') === 'dark' ? 0.8 : 1;
+                applyLook();
+            },
             setStatuses(map, text = {}) { statuses = { ...map }; labels = { ...text }; applyLook(); applyHotspots(); },
             setActive(id) {
                 active = id || null;

@@ -59,7 +59,9 @@ Light, soft-card style built around the ARTEMIS logo blue `#3253DF`:
 | 30% | White rounded cards, inputs, floating panels | `--surface #ffffff`, `--surface-2 #f6f8fb`, `--line #e4e8ef` |
 | 10% | Actions, selection, focus | `--accent #3253df` (logo blue) |
 
-Green / amber / red are reserved for health status only. Font: Plus Jakarta Sans. Layout: icon sidebar (bottom tab bar on phones), 3D body stage with floating panels, crew card + vitals on the right.
+Green / amber / red are reserved for health status only. Font: Plus Jakarta Sans.
+
+**Dark theme:** same 60-30-10 split (deep navy page, raised navy cards, a lighter tint of the logo blue `#8ea4ff` so text stays readable). It follows the system setting by default; the sun/moon button in the top bar switches it and remembers the choice. The logo has white-letter versions for dark mode. Layout: icon sidebar (bottom tab bar on phones), 3D body stage with floating panels, crew card + vitals on the right.
 
 ## Integration hooks
 
